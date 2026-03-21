@@ -1,12 +1,20 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { formatMoney, formatPct, genLine } from '@/data/market-data';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const COLORS = ['#5b9cf6', '#63d2aa', '#a78bfa', '#f5a623', '#f0616b', '#fb8c5a'];
+const TIMEFRAMES = [
+  { key: '1W', days: 7 },
+  { key: '1M', days: 30 },
+  { key: '3M', days: 90 },
+  { key: '1Y', days: 365 },
+  { key: 'ALL', days: 730 },
+];
 
 export default function DashboardPage({ onAddHolding }: { onAddHolding: () => void }) {
   const { holdings } = usePortfolio();
+  const [timeframe, setTimeframe] = useState('3M');
   const n = holdings.length;
   const totalVal = n ? holdings.reduce((s, h) => s + h.shares * h.price, 0) : 0;
   const totalCost = n ? holdings.reduce((s, h) => s + h.shares * h.cost, 0) : 0;
@@ -20,16 +28,18 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
     { label: "Today's P&L", val: n ? formatMoney(dayChg) : null, chg: n ? '+0.65%' : null, up: true },
   ];
 
+  const selectedDays = TIMEFRAMES.find(t => t.key === timeframe)?.days || 90;
+
   const perfData = useMemo(() => {
     if (!n) return [];
-    const data = genLine(totalVal * 0.88, 90, 0.003);
+    const data = genLine(totalVal * 0.88, selectedDays, 0.003);
     const now = new Date();
     return data.map((v, i) => {
       const d = new Date(now);
-      d.setDate(d.getDate() - (90 - i));
+      d.setDate(d.getDate() - (selectedDays - i));
       return { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: v };
     });
-  }, [n, totalVal]);
+  }, [n, totalVal, selectedDays]);
 
   const allocData = useMemo(() => {
     if (!n) return [];
@@ -77,9 +87,9 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
           <div className="px-[15px] py-3 border-b border-border flex items-center">
             <span className="font-display text-[13px] font-bold">Portfolio Performance</span>
             <div className="ml-auto flex gap-0.5 bg-secondary rounded-lg p-[3px]">
-              {['1W', '1M', '3M', '1Y', 'ALL'].map(tf => (
-                <button key={tf} className={`px-2 py-1 rounded-md text-[11px] font-mono ${tf === '3M' ? 'bg-accent-dim text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                  {tf}
+              {TIMEFRAMES.map(tf => (
+                <button key={tf.key} onClick={() => setTimeframe(tf.key)} className={`px-2 py-1 rounded-md text-[11px] font-mono ${timeframe === tf.key ? 'bg-accent-dim text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {tf.key}
                 </button>
               ))}
             </div>
@@ -91,7 +101,7 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={perfData}>
                   <defs><linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#63d2aa" stopOpacity={0.15} /><stop offset="100%" stopColor="#63d2aa" stopOpacity={0} /></linearGradient></defs>
-                  <XAxis dataKey="date" tick={{ fill: '#4a5068', fontSize: 9 }} tickLine={false} axisLine={false} interval={14} />
+                  <XAxis dataKey="date" tick={{ fill: '#4a5068', fontSize: 9 }} tickLine={false} axisLine={false} interval={Math.floor(selectedDays / 6)} />
                   <YAxis tick={{ fill: '#4a5068', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => '$' + Math.round(v).toLocaleString()} width={60} />
                   <Tooltip contentStyle={{ background: '#13151d', border: '1px solid rgba(128,128,128,0.15)', borderRadius: 8, fontSize: 12 }} formatter={(v: number) => ['$' + Math.round(v).toLocaleString(), 'Value']} />
                   <Area type="monotone" dataKey="value" stroke="#63d2aa" fill="url(#perfGrad)" strokeWidth={2} />

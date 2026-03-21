@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { MARKET, genLine, formatPct } from '@/data/market-data';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -12,18 +12,28 @@ const SYMBOLS = [
 ];
 const TFS = ['1D', '1W', '1M', '3M', '1Y'];
 
-export default function ChartsPage() {
-  const [sym, setSym] = useState('AAPL');
+interface ChartsPageProps {
+  initialSymbol?: string;
+}
+
+export default function ChartsPage({ initialSymbol }: ChartsPageProps) {
+  const [sym, setSym] = useState(initialSymbol || 'AAPL');
   const [tf, setTf] = useState('1W');
   const [inds, setInds] = useState<Record<string, boolean>>({ MA20: true, MA50: false, RSI: false, BB: false });
 
+  useEffect(() => {
+    if (initialSymbol && MARKET[initialSymbol]) setSym(initialSymbol);
+  }, [initialSymbol]);
+
   const asset = MARKET[sym] || { price: 200, chgPct: 0, name: sym, mktcap: '—', vol: '—', pe: '—', sector: '—' };
 
+  const pts = tf === '1D' ? 24 : tf === '1W' ? 40 : tf === '1M' ? 30 : tf === '3M' ? 90 : 252;
+
   const chartData = useMemo(() => {
-    const closes = genLine(asset.price * 0.88, 90, 0.002);
+    const closes = genLine(asset.price * 0.88, pts, 0.002);
     const now = new Date();
     return closes.map((v, i) => {
-      const d = new Date(now); d.setDate(d.getDate() - (90 - i));
+      const d = new Date(now); d.setDate(d.getDate() - (pts - i));
       const ma20 = i >= 19 ? +(closes.slice(i - 19, i + 1).reduce((a, b) => a + b) / 20).toFixed(2) : undefined;
       const ma50 = i >= 49 ? +(closes.slice(i - 49, i + 1).reduce((a, b) => a + b) / 50).toFixed(2) : undefined;
       return {
@@ -34,7 +44,7 @@ export default function ChartsPage() {
         vol: Math.random() * 5e7 + 1e7,
       };
     });
-  }, [sym, tf, inds, asset.price]);
+  }, [sym, tf, inds, asset.price, pts]);
 
   const rsi = (30 + Math.random() * 40).toFixed(1);
   const macd = (Math.random() * 4 - 2).toFixed(2);
@@ -78,7 +88,7 @@ export default function ChartsPage() {
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={chartData}>
                 <defs><linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={asset.chgPct >= 0 ? '#63d2aa' : '#f0616b'} stopOpacity={0.1} /><stop offset="100%" stopColor={asset.chgPct >= 0 ? '#63d2aa' : '#f0616b'} stopOpacity={0} /></linearGradient></defs>
-                <XAxis dataKey="date" tick={{ fill: '#4a5068', fontSize: 9 }} tickLine={false} axisLine={false} interval={14} />
+                <XAxis dataKey="date" tick={{ fill: '#4a5068', fontSize: 9 }} tickLine={false} axisLine={false} interval={Math.floor(pts / 6)} />
                 <YAxis tick={{ fill: '#4a5068', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => '$' + Math.round(v).toLocaleString()} width={60} domain={['auto', 'auto']} />
                 <Tooltip contentStyle={{ background: '#13151d', border: '1px solid rgba(128,128,128,0.15)', borderRadius: 8, fontSize: 12 }} />
                 <Area type="monotone" dataKey="price" stroke={asset.chgPct >= 0 ? '#63d2aa' : '#f0616b'} fill="url(#priceGrad)" strokeWidth={2} dot={false} />

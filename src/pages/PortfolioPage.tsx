@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { formatMoney, formatPct } from '@/data/market-data';
+import { toast } from '@/hooks/use-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const TABS = ['all', 'stock', 'cryptocurrency', 'etf', 'bond'];
@@ -33,6 +34,40 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
     { l: "Today's P&L", v: n ? formatMoney(totalVal * 0.0065) : null, c: '+0.65%', up: true },
   ];
 
+  const exportCSV = () => {
+    if (!n) { toast({ title: 'No data', description: 'Add holdings before exporting.' }); return; }
+    const headers = 'Symbol,Name,Type,Shares,Avg Cost,Price,Value,P&L,P&L%';
+    const rows = holdings.map(h => {
+      const mv = h.shares * h.price;
+      const pl = mv - h.shares * h.cost;
+      const pct = ((h.price - h.cost) / h.cost * 100).toFixed(2);
+      return `${h.sym},${h.name},${h.type},${h.shares},${h.cost},${h.price},${mv.toFixed(2)},${pl.toFixed(2)},${pct}%`;
+    });
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `mevest-portfolio-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: 'CSV exported', description: `${n} holdings exported successfully.` });
+  };
+
+  const exportJSON = () => {
+    if (!n) { toast({ title: 'No data', description: 'Add holdings before exporting.' }); return; }
+    const data = holdings.map(h => ({
+      symbol: h.sym, name: h.name, type: h.type, shares: h.shares,
+      avgCost: h.cost, currentPrice: h.price, marketValue: h.shares * h.price,
+      pnl: h.shares * h.price - h.shares * h.cost,
+      pnlPercent: +((h.price - h.cost) / h.cost * 100).toFixed(2),
+    }));
+    const blob = new Blob([JSON.stringify({ portfolio: data, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `mevest-portfolio-${new Date().toISOString().split('T')[0]}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    toast({ title: 'JSON exported', description: `${n} holdings exported successfully.` });
+  };
+
   return (
     <div className="space-y-3.5">
       <div className="flex items-center justify-between">
@@ -43,8 +78,8 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
           </div>
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ CSV</button>
-          <button className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ JSON</button>
+          <button onClick={exportCSV} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ CSV</button>
+          <button onClick={exportJSON} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ JSON</button>
           <button onClick={onAddHolding} className="px-[13px] py-1.5 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:opacity-90">+ Add Holding</button>
         </div>
       </div>
@@ -121,7 +156,11 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
                         <div className="text-[10px] text-muted-foreground mb-0.5">{alloc}%</div>
                         <div className="h-[3px] bg-border rounded-sm overflow-hidden"><div className="h-full rounded-sm" style={{ width: alloc + '%', background: h.color }} /></div>
                       </td>
-                      <td className="p-[10px] px-[11px]"><button onClick={() => removeHolding(h.sym)} className="text-[11px] px-2 py-1 rounded-md bg-secondary border border-border text-muted-foreground hover:text-foreground">Remove</button></td>
+                      <td className="p-[10px] px-[11px]">
+                        <button onClick={() => { removeHolding(h.sym); toast({ title: `${h.sym} removed`, description: 'Holding removed from portfolio.' }); }} className="text-[11px] px-2 py-1 rounded-md bg-secondary border border-border text-muted-foreground hover:text-foreground">
+                          Remove
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import AddHoldingModal from '@/components/AddHoldingModal';
@@ -20,16 +20,22 @@ const PAGE_TITLES: Record<string, string> = {
 export default function Index() {
   const [page, setPage] = useState('dashboard');
   const [modalOpen, setModalOpen] = useState(false);
+  const [chartSymbol, setChartSymbol] = useState<string | undefined>();
 
   const openModal = () => setModalOpen(true);
+
+  const handleNavigate = useCallback((targetPage: string, sym?: string) => {
+    setPage(targetPage);
+    if (sym) setChartSymbol(sym);
+  }, []);
 
   const renderPage = () => {
     switch (page) {
       case 'dashboard': return <DashboardPage onAddHolding={openModal} />;
       case 'portfolio': return <PortfolioPage onAddHolding={openModal} />;
       case 'analytics': return <AnalyticsPage />;
-      case 'charts': return <ChartsPage />;
-      case 'screener': return <ScreenerPage />;
+      case 'charts': return <ChartsPage initialSymbol={chartSymbol} />;
+      case 'screener': return <ScreenerPage onNavigate={handleNavigate} />;
       case 'watchlist': return <MarketWatchPage />;
       case 'news': return <NewsFeedPage />;
       case 'settings': return <SettingsPage />;
@@ -41,7 +47,7 @@ export default function Index() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activePage={page} onNavigate={setPage} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar title={PAGE_TITLES[page] || 'Dashboard'} onAddHolding={openModal} />
+        <Topbar title={PAGE_TITLES[page] || 'Dashboard'} onAddHolding={openModal} onNavigate={handleNavigate} />
         <div className="flex-1 overflow-y-auto p-[18px]">
           {renderPage()}
         </div>
