@@ -1,11 +1,19 @@
 import { useState, useMemo } from 'react';
 import { MARKET, formatPct } from '@/data/market-data';
+import { useWatchlist } from '@/context/WatchlistContext';
+import { toast } from '@/hooks/use-toast';
+import { Star } from 'lucide-react';
 
 type ScFilters = { type: string; cap: string; signal: string; perf: string };
 
-export default function ScreenerPage() {
+interface ScreenerPageProps {
+  onNavigate?: (page: string, sym?: string) => void;
+}
+
+export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
   const [filters, setFilters] = useState<ScFilters>({ type: 'all', cap: 'all', signal: 'all', perf: 'all' });
   const [sort, setSort] = useState('mktcap');
+  const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
 
   const data = useMemo(() => {
     let items = Object.entries(MARKET).map(([sym, a]) => ({ sym, ...a }));
@@ -24,6 +32,16 @@ export default function ScreenerPage() {
   }, [filters, sort]);
 
   const setFilter = (group: keyof ScFilters, val: string) => setFilters(prev => ({ ...prev, [group]: val }));
+
+  const handleToggleWatchlist = (sym: string) => {
+    if (isInWatchlist(sym)) {
+      removeFromWatchlist(sym);
+      toast({ title: `${sym} removed`, description: 'Removed from your watchlist.' });
+    } else {
+      addToWatchlist(sym);
+      toast({ title: `${sym} added`, description: 'Added to your watchlist.' });
+    }
+  };
 
   const filterRow = (label: string, group: keyof ScFilters, options: { val: string; label: string }[]) => (
     <div className="flex gap-2 flex-wrap items-center mb-2.5">
@@ -74,14 +92,17 @@ export default function ScreenerPage() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
-                {['#', 'Asset', 'Type', 'Price', '24h %', 'Mkt Cap', 'Volume', 'RSI', 'P/E', 'Sector', 'Signal'].map(h => (
-                  <th key={h} className={`p-[9px] px-[11px] text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.7px] ${['Price', '24h %', 'Mkt Cap', 'Volume', 'RSI', 'P/E'].includes(h) ? 'text-right' : h === 'Signal' ? 'text-center' : 'text-left'}`}>{h}</th>
+                {['', '#', 'Asset', 'Type', 'Price', '24h %', 'Mkt Cap', 'Volume', 'RSI', 'P/E', 'Sector', 'Signal'].map(h => (
+                  <th key={h || 'star'} className={`p-[9px] px-[11px] text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.7px] ${['Price', '24h %', 'Mkt Cap', 'Volume', 'RSI', 'P/E'].includes(h) ? 'text-right' : h === 'Signal' ? 'text-center' : 'text-left'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {data.map((a, i) => (
-                <tr key={a.sym} className="border-b border-border/50 hover:bg-glass">
+                <tr key={a.sym} className="border-b border-border/50 hover:bg-glass cursor-pointer" onClick={() => onNavigate?.('charts', a.sym)}>
+                  <td className="p-[10px] px-[11px]" onClick={e => { e.stopPropagation(); handleToggleWatchlist(a.sym); }}>
+                    <Star className={`w-3.5 h-3.5 cursor-pointer transition-colors ${isInWatchlist(a.sym) ? 'fill-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`} />
+                  </td>
                   <td className="p-[10px] px-[11px] font-mono text-muted-foreground">{i + 1}</td>
                   <td className="p-[10px] px-[11px]">
                     <div className="font-bold text-[13px]">{a.sym}</div>
