@@ -10,6 +10,7 @@ interface TopbarProps {
 }
 
 export default function Topbar({ title, onAddHolding, onNavigate }: TopbarProps) {
+  const { theme, toggleTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -114,6 +115,15 @@ export default function Topbar({ title, onAddHolding, onNavigate }: TopbarProps)
           </div>
         )}
       </div>
+
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        className="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+      </button>
 
       <button
         onClick={onAddHolding}
