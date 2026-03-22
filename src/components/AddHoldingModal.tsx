@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { MARKET } from '@/data/market-data';
 import { toast } from '@/hooks/use-toast';
-import { X, ChevronDown } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface AddHoldingModalProps {
   open: boolean;
@@ -51,10 +51,15 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
   const [form, setForm] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  if (!open) return null;
-
   const countryData = COUNTRIES.find(c => c.code === country) || COUNTRIES[1];
   const isKenya = country === 'KE';
+
+  const quickAdds = useMemo(() => {
+    if (isKenya && assetType === 'stock') return KENYAN_STOCKS.slice(0, 6);
+    return QUICK_ADDS[assetType] || [];
+  }, [assetType, isKenya]);
+
+  if (!open) return null;
 
   const update = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
 
@@ -111,7 +116,7 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
       type = 'bond';
     } else if (assetType === 'mmf') {
       sym = 'MMF-' + (form.fundName || '').replace(/\s/g, '').slice(0, 6).toUpperCase();
-      name = form.fundName || 'Money Market Fund';
+      name = form.fundName === 'other' ? (form.customFund || 'Money Market Fund') : (form.fundName || 'Money Market Fund');
       shares = 1;
       cost = parseFloat(form.amount || '0');
       type = 'stock';
@@ -139,13 +144,8 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
 
   const inputCls = (field: string) =>
     `w-full bg-muted border rounded-lg px-3 py-2.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors ${errors[field] ? 'border-destructive' : 'border-border'}`;
-  const selectCls = 'w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors appearance-none';
+  const selectCls = 'w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors';
   const labelCls = 'block text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.5px] mb-1.5';
-
-  const quickAdds = useMemo(() => {
-    if (isKenya && assetType === 'stock') return KENYAN_STOCKS.slice(0, 6);
-    return QUICK_ADDS[assetType] || [];
-  }, [assetType, isKenya]);
 
   const renderFields = () => {
     switch (assetType) {
@@ -269,13 +269,13 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
               </div>
               <div>
                 <label className={labelCls}>Face Value ({countryData.currency})</label>
-                <input value={form.faceValue || ''} onChange={e => update('faceValue', e.target.value)} type="number" placeholder={isKenya ? '50,000' : '1,000'} className={inputCls('faceValue')} />
+                <input value={form.faceValue || ''} onChange={e => update('faceValue', e.target.value)} type="number" placeholder={isKenya ? '50000' : '1000'} className={inputCls('faceValue')} />
                 {errors.faceValue && <span className="text-[10px] text-destructive mt-0.5 block">{errors.faceValue}</span>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Coupon / Interest Rate (%)</label>
+                <label className={labelCls}>Coupon Rate (%)</label>
                 <input value={form.rate || ''} onChange={e => update('rate', e.target.value)} type="number" step="0.01" placeholder="e.g. 14.5" className={inputCls('rate')} />
                 {errors.rate && <span className="text-[10px] text-destructive mt-0.5 block">{errors.rate}</span>}
               </div>
@@ -316,7 +316,7 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
               </div>
               <div>
                 <label className={labelCls}>Face Value ({countryData.currency})</label>
-                <input value={form.faceValue || ''} onChange={e => update('faceValue', e.target.value)} type="number" placeholder={isKenya ? '100,000' : '10,000'} className={inputCls('faceValue')} />
+                <input value={form.faceValue || ''} onChange={e => update('faceValue', e.target.value)} type="number" placeholder={isKenya ? '100000' : '10000'} className={inputCls('faceValue')} />
                 {errors.faceValue && <span className="text-[10px] text-destructive mt-0.5 block">{errors.faceValue}</span>}
               </div>
             </div>
@@ -446,10 +446,10 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
                 <label className={labelCls}>Product Type</label>
                 <select value={form.productType || ''} onChange={e => update('productType', e.target.value)} className={selectCls}>
                   <option value="">Select</option>
-                  {isKenya
+                  {(isKenya
                     ? ['NSSF', 'Occupational Pension', 'Individual Pension', 'Provident Fund', 'Endowment', 'Education Policy']
                     : ['401(k)', 'IRA', 'Pension', 'Annuity', 'Life Insurance', 'Endowment']
-                  .map(p => <option key={p}>{p}</option>)}
+                  ).map(p => <option key={p}>{p}</option>)}
                 </select>
               </div>
               <div>
@@ -488,7 +488,6 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
   return (
     <div className="fixed inset-0 bg-black/65 flex items-center justify-center z-50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl w-[520px] max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="px-5 py-4 border-b border-border flex items-center gap-3">
           <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${typeColors[assetType] || 'bg-muted text-muted-foreground'}`}>
             {typeLabel}
@@ -498,40 +497,28 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Asset type & Country selectors */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Asset Type</label>
-              <select
-                value={assetType}
-                onChange={e => { setAssetType(e.target.value as AssetType); setForm({}); setErrors({}); }}
-                className={selectCls}
-              >
+              <select value={assetType} onChange={e => { setAssetType(e.target.value as AssetType); setForm({}); setErrors({}); }} className={selectCls}>
                 {ASSET_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
               <label className={labelCls}>Country / Market</label>
-              <select
-                value={country}
-                onChange={e => { setCountry(e.target.value); setForm({}); setErrors({}); }}
-                className={selectCls}
-              >
+              <select value={country} onChange={e => { setCountry(e.target.value); setForm({}); setErrors({}); }} className={selectCls}>
                 {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Dynamic fields */}
           {renderFields()}
 
-          {/* Notes */}
           <div>
             <label className={labelCls}>Notes (optional)</label>
             <input value={form.notes || ''} onChange={e => update('notes', e.target.value)} placeholder="e.g. Long-term hold..." className={inputCls('notes')} />
           </div>
 
-          {/* Quick adds */}
           {quickAdds.length > 0 && (
             <div>
               <label className={labelCls}>Quick Add</label>
@@ -554,7 +541,6 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-5 py-3 border-t border-border flex gap-2 justify-end">
           <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium bg-secondary text-muted-foreground border border-border hover:text-foreground transition-colors">Cancel</button>
           <button onClick={handleSubmit} className="px-4 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Add {typeLabel}</button>

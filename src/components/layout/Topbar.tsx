@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Sun, Moon } from 'lucide-react';
 import { TICKER_ITEMS, MARKET } from '@/data/market-data';
+import { useTheme } from '@/context/ThemeContext';
 
 interface TopbarProps {
   title: string;
