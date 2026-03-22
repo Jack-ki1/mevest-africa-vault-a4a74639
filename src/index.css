@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
+  :root, .dark {
     --background: 230 20% 5%;
     --foreground: 228 20% 93%;
 
@@ -58,6 +58,61 @@
     --sidebar-accent-foreground: 228 20% 93%;
     --sidebar-border: 0 0% 100%;
     --sidebar-ring: 157 52% 60%;
+  }
+
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 224 20% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 20% 12%;
+    --card-hover: 210 15% 96%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 20% 12%;
+
+    --primary: 157 55% 38%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 15% 94%;
+    --secondary-foreground: 224 20% 12%;
+
+    --muted: 210 12% 92%;
+    --muted-foreground: 220 10% 46%;
+
+    --accent: 157 55% 38%;
+    --accent-foreground: 0 0% 100%;
+    --accent-dim: 157 55% 38%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-dim: 0 72% 51%;
+
+    --amber: 36 91% 45%;
+    --amber-foreground: 0 0% 100%;
+
+    --blue: 218 80% 50%;
+    --blue-foreground: 0 0% 100%;
+
+    --purple: 258 70% 55%;
+
+    --border: 220 13% 80%;
+    --input: 220 13% 80%;
+    --ring: 157 55% 38%;
+
+    --radius: 0.75rem;
+
+    --bg-glass: 220 13% 20%;
+    --chart-grid: 220 13% 80%;
+
+    --sidebar-background: 210 18% 96%;
+    --sidebar-foreground: 220 10% 46%;
+    --sidebar-primary: 157 55% 38%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 15% 92%;
+    --sidebar-accent-foreground: 224 20% 12%;
+    --sidebar-border: 220 13% 80%;
+    --sidebar-ring: 157 55% 38%;
   }
 }
 
