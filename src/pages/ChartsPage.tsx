@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { MARKET, genLine, formatPct } from '@/data/market-data';
+import { MARKET, MarketAsset, genLine, formatPct } from '@/data/market-data';
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 const SYMBOLS = [
