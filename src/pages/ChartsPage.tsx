@@ -31,7 +31,7 @@ export default function ChartsPage({ initialSymbol }: ChartsPageProps) {
     if (initialSymbol && MARKET[initialSymbol]) setSym(initialSymbol);
   }, [initialSymbol]);
 
-  const asset = MARKET[sym] || { price: 200, chgPct: 0, name: sym, mktcap: '—', vol: '—', pe: '—', sector: '—', rsi: 50 };
+  const asset: MarketAsset = MARKET[sym] || { name: sym, price: 200, chg: 0, chgPct: 0, type: 'stock' as const, mktcap: '—', vol: '—', pe: '—', sector: '—', rsi: 50, signal: 'neutral' as const, cap: '—' };
   const pts = tf === '1D' ? 24 : tf === '1W' ? 40 : tf === '1M' ? 30 : tf === '3M' ? 90 : 252;
 
   const chartData = useMemo(() => {
