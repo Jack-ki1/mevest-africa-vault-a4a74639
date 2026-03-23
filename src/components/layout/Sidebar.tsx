@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
-  LayoutDashboard, Box, Activity, TrendingUp, List, Eye, FileText, Settings, LogOut,
+  LayoutDashboard, Box, Activity, TrendingUp, List, Eye, FileText, Settings,
+  Grid3X3, Calendar, Star, BarChart3,
 } from 'lucide-react';
 
 const NAV_SECTIONS = [
@@ -17,13 +18,16 @@ const NAV_SECTIONS = [
     items: [
       { id: 'charts', label: 'Charts', icon: TrendingUp },
       { id: 'screener', label: 'Screener', icon: List },
-      { id: 'watchlist', label: 'Market Watch', icon: Eye },
+      { id: 'heatmap', label: 'Heatmap', icon: Grid3X3 },
+      { id: 'marketwatch', label: 'Market Watch', icon: BarChart3 },
+      { id: 'calendar', label: 'Calendar', icon: Calendar },
       { id: 'news', label: 'News Feed', icon: FileText, hasNotif: true },
     ],
   },
   {
-    label: 'Account',
+    label: 'Personal',
     items: [
+      { id: 'watchlist', label: 'Watchlist', icon: Star },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },
