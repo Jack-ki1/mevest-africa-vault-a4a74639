@@ -6,34 +6,34 @@
 
 @layer base {
   :root, .dark {
-    --background: 230 20% 5%;
-    --foreground: 228 20% 93%;
+    --background: 228 22% 5%;
+    --foreground: 220 20% 93%;
 
-    --card: 230 18% 10%;
-    --card-foreground: 228 20% 93%;
-    --card-hover: 230 16% 13%;
+    --card: 228 20% 8%;
+    --card-foreground: 220 20% 93%;
+    --card-hover: 228 18% 12%;
 
-    --popover: 230 18% 10%;
-    --popover-foreground: 228 20% 93%;
+    --popover: 228 20% 8%;
+    --popover-foreground: 220 20% 93%;
 
-    --primary: 157 52% 60%;
+    --primary: 160 60% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 230 16% 13%;
-    --secondary-foreground: 228 20% 93%;
+    --secondary: 228 18% 11%;
+    --secondary-foreground: 220 20% 93%;
 
-    --muted: 230 14% 16%;
-    --muted-foreground: 228 12% 52%;
+    --muted: 228 16% 15%;
+    --muted-foreground: 225 12% 48%;
 
-    --accent: 157 52% 60%;
+    --accent: 160 60% 52%;
     --accent-foreground: 0 0% 100%;
-    --accent-dim: 157 52% 60%;
+    --accent-dim: 160 60% 52%;
 
-    --destructive: 0 72% 60%;
+    --destructive: 0 76% 58%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-dim: 0 72% 60%;
+    --destructive-dim: 0 76% 58%;
 
-    --amber: 36 91% 55%;
+    --amber: 38 95% 55%;
     --amber-foreground: 0 0% 100%;
 
     --blue: 218 90% 66%;
@@ -43,52 +43,52 @@
 
     --border: 0 0% 100%;
     --input: 0 0% 100%;
-    --ring: 157 52% 60%;
+    --ring: 160 60% 52%;
 
     --radius: 0.75rem;
 
     --bg-glass: 0 0% 100%;
     --chart-grid: 0 0% 100%;
 
-    --sidebar-background: 230 20% 6%;
-    --sidebar-foreground: 228 12% 52%;
-    --sidebar-primary: 157 52% 60%;
+    --sidebar-background: 228 22% 6%;
+    --sidebar-foreground: 225 12% 48%;
+    --sidebar-primary: 160 60% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 230 16% 13%;
-    --sidebar-accent-foreground: 228 20% 93%;
+    --sidebar-accent: 228 18% 11%;
+    --sidebar-accent-foreground: 220 20% 93%;
     --sidebar-border: 0 0% 100%;
-    --sidebar-ring: 157 52% 60%;
+    --sidebar-ring: 160 60% 52%;
   }
 
   .light {
-    --background: 210 20% 98%;
-    --foreground: 224 20% 12%;
+    --background: 220 25% 97%;
+    --foreground: 224 25% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 224 20% 12%;
-    --card-hover: 210 15% 96%;
+    --card-foreground: 224 25% 10%;
+    --card-hover: 220 18% 96%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 224 20% 12%;
+    --popover-foreground: 224 25% 10%;
 
-    --primary: 157 55% 38%;
+    --primary: 160 60% 36%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 94%;
-    --secondary-foreground: 224 20% 12%;
+    --secondary: 220 18% 93%;
+    --secondary-foreground: 224 25% 10%;
 
-    --muted: 210 12% 92%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 220 14% 91%;
+    --muted-foreground: 220 12% 42%;
 
-    --accent: 157 55% 38%;
+    --accent: 160 60% 36%;
     --accent-foreground: 0 0% 100%;
-    --accent-dim: 157 55% 38%;
+    --accent-dim: 160 60% 36%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 76% 50%;
     --destructive-foreground: 0 0% 100%;
-    --destructive-dim: 0 72% 51%;
+    --destructive-dim: 0 76% 50%;
 
-    --amber: 36 91% 45%;
+    --amber: 38 95% 42%;
     --amber-foreground: 0 0% 100%;
 
     --blue: 218 80% 50%;
@@ -96,23 +96,23 @@
 
     --purple: 258 70% 55%;
 
-    --border: 220 13% 80%;
-    --input: 220 13% 80%;
-    --ring: 157 55% 38%;
+    --border: 220 16% 82%;
+    --input: 220 16% 82%;
+    --ring: 160 60% 36%;
 
     --radius: 0.75rem;
 
-    --bg-glass: 220 13% 20%;
-    --chart-grid: 220 13% 80%;
+    --bg-glass: 220 16% 18%;
+    --chart-grid: 220 16% 82%;
 
-    --sidebar-background: 210 18% 96%;
-    --sidebar-foreground: 220 10% 46%;
-    --sidebar-primary: 157 55% 38%;
+    --sidebar-background: 220 20% 95%;
+    --sidebar-foreground: 220 12% 42%;
+    --sidebar-primary: 160 60% 36%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 15% 92%;
-    --sidebar-accent-foreground: 224 20% 12%;
-    --sidebar-border: 220 13% 80%;
-    --sidebar-ring: 157 55% 38%;
+    --sidebar-accent: 220 18% 90%;
+    --sidebar-accent-foreground: 224 25% 10%;
+    --sidebar-border: 220 16% 82%;
+    --sidebar-ring: 160 60% 36%;
   }
 }
 
@@ -139,4 +139,28 @@
   .font-mono-dm {
     font-family: 'DM Mono', monospace;
   }
+}
+
+/* Real-time price flash animations */
+@keyframes flash-green {
+  0% { background-color: hsl(160 60% 52% / 0.25); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-red {
+  0% { background-color: hsl(0 76% 58% / 0.25); }
+  100% { background-color: transparent; }
+}
+.price-up {
+  animation: flash-green 0.6s ease-out;
+}
+.price-down {
+  animation: flash-red 0.6s ease-out;
+}
+
+/* Smooth gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(160 60% 52%), hsl(190 80% 60%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

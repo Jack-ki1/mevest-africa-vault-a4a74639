@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PortfolioProvider } from "@/context/PortfolioContext";
 import { WatchlistProvider } from "@/context/WatchlistContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { RealtimeMarketProvider } from "@/context/RealtimeMarketContext";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -15,18 +16,20 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <ThemeProvider>
-        <PortfolioProvider>
-          <WatchlistProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </WatchlistProvider>
-        </PortfolioProvider>
+        <RealtimeMarketProvider>
+          <PortfolioProvider>
+            <WatchlistProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </WatchlistProvider>
+          </PortfolioProvider>
+        </RealtimeMarketProvider>
       </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>

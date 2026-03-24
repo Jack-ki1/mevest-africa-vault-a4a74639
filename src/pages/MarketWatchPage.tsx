@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { MARKET_REGIONS, genLine, formatPrice } from '@/data/market-data';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { Zap } from 'lucide-react';
 
 const REGIONS = [
   { val: 'us', label: '🇺🇸 US Markets' },
@@ -12,6 +14,7 @@ const REGIONS = [
 ];
 
 export default function MarketWatchPage() {
+  const { prices } = useRealtimeMarket();
   const [region, setRegion] = useState('us');
   const items = MARKET_REGIONS[region] || [];
 
@@ -19,10 +22,15 @@ export default function MarketWatchPage() {
     <div className="space-y-3.5">
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-display text-[19px] font-extrabold tracking-tight">Market Watch</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Live charts across global markets</div>
+          <div className="flex items-center gap-2">
+            <div className="font-display text-[19px] font-extrabold tracking-tight">Market Watch</div>
+            <div className="flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+              <Zap className="w-2.5 h-2.5 fill-primary" />LIVE
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">Real-time charts across global markets</div>
         </div>
-        <select value={region} onChange={e => setRegion(e.target.value)} className="px-[9px] py-[5px] rounded-md text-xs bg-card border border-border text-foreground outline-none">
+        <select value={region} onChange={e => setRegion(e.target.value)} className="px-[9px] py-[5px] rounded-md text-xs bg-secondary border border-border text-foreground outline-none">
           {REGIONS.map(r => <option key={r.val} value={r.val}>{r.label}</option>)}
         </select>
       </div>
@@ -42,7 +50,7 @@ function MarketCard({ item }: { item: { sym: string; key: string; price: number;
     return data.map((v, i) => ({ i, v }));
   }, [item.price, item.chg]);
 
-  const color = item.chg >= 0 ? '#63d2aa' : '#f0616b';
+  const color = item.chg >= 0 ? 'hsl(160 60% 52%)' : 'hsl(0 76% 58%)';
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/25 transition-colors">
@@ -51,8 +59,8 @@ function MarketCard({ item }: { item: { sym: string; key: string; price: number;
           <div className="font-mono text-sm font-semibold text-foreground">{item.sym}</div>
         </div>
         <div className="text-right">
-          <div className="font-mono text-base font-medium text-foreground">{formatPrice(item.price)}</div>
-          <span className={`font-mono text-[10px] font-semibold px-[7px] py-0.5 rounded ${item.chg >= 0 ? 'text-primary bg-accent-dim' : 'text-destructive bg-destructive-dim'}`}>
+          <div className="font-mono text-base font-medium text-foreground tabular-nums">{formatPrice(item.price)}</div>
+          <span className={`font-mono text-[10px] font-bold px-[7px] py-0.5 rounded-md tabular-nums ${item.chg >= 0 ? 'text-primary bg-primary/10' : 'text-destructive bg-destructive/10'}`}>
             {item.chg >= 0 ? '+' : ''}{item.chg.toFixed(2)}%
           </span>
         </div>
