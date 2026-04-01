@@ -5,10 +5,8 @@ import AddHoldingModal from '@/components/AddHoldingModal';
 import DashboardPage from '@/pages/DashboardPage';
 import PortfolioPage from '@/pages/PortfolioPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
-import ChartsPage from '@/pages/ChartsPage';
+import MarketsPage from '@/pages/MarketsPage';
 import ScreenerPage from '@/pages/ScreenerPage';
-import HeatmapPage from '@/pages/HeatmapPage';
-import MarketWatchPage from '@/pages/MarketWatchPage';
 import CalendarPage from '@/pages/CalendarPage';
 import WatchlistPage from '@/pages/WatchlistPage';
 import NewsFeedPage from '@/pages/NewsFeedPage';
@@ -16,8 +14,8 @@ import SettingsPage from '@/pages/SettingsPage';
 
 const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard', portfolio: 'My Portfolio', analytics: 'Advanced Analytics',
-  charts: 'Market Charts', screener: 'Market Screener', heatmap: 'Market Heatmap',
-  marketwatch: 'Market Watch', calendar: 'Calendar', watchlist: 'My Watchlist',
+  markets: 'Markets', screener: 'Market Screener',
+  calendar: 'Calendar', watchlist: 'My Watchlist',
   news: 'News Feed', settings: 'Settings',
 };
 
@@ -38,10 +36,8 @@ export default function Index() {
       case 'dashboard': return <DashboardPage onAddHolding={openModal} />;
       case 'portfolio': return <PortfolioPage onAddHolding={openModal} />;
       case 'analytics': return <AnalyticsPage />;
-      case 'charts': return <ChartsPage initialSymbol={chartSymbol} />;
+      case 'markets': return <MarketsPage initialSymbol={chartSymbol} />;
       case 'screener': return <ScreenerPage onNavigate={handleNavigate} />;
-      case 'heatmap': return <HeatmapPage />;
-      case 'marketwatch': return <MarketWatchPage />;
       case 'calendar': return <CalendarPage />;
       case 'watchlist': return <WatchlistPage onNavigate={handleNavigate} />;
       case 'news': return <NewsFeedPage />;

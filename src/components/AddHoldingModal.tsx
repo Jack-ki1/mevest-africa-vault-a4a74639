@@ -210,12 +210,24 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
       case 'crypto':
         return (
           <>
+            <div>
+              <label className={labelCls}>Search Coin / Token</label>
+              <LiveSearchInput
+                onSelect={async (sym, name) => {
+                  setForm(f => ({ ...f, symbol: sym, name }));
+                  try {
+                    const q = await marketApi.getQuotes([sym]);
+                    if (q[sym]) setForm(f => ({ ...f, price: String(q[sym].price.toFixed(2)) }));
+                  } catch {}
+                }}
+                placeholder="Search BTC, ETH, SOL..."
+                size="sm"
+                value={form.symbol}
+                onValueChange={val => update('symbol', val)}
+              />
+              {errors.symbol && <span className="text-[10px] text-destructive mt-0.5 block">{errors.symbol}</span>}
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Coin / Token</label>
-                <input value={form.symbol || ''} onChange={e => handleSymbolChange(e.target.value)} placeholder="e.g. BTC" className={inputCls('symbol')} />
-                {errors.symbol && <span className="text-[10px] text-destructive mt-0.5 block">{errors.symbol}</span>}
-              </div>
               <div>
                 <label className={labelCls}>Network</label>
                 <select value={form.network || ''} onChange={e => update('network', e.target.value)} className={selectCls}>
