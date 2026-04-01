@@ -4,6 +4,7 @@ import { formatPct } from '@/data/market-data';
 import { useWatchlist } from '@/context/WatchlistContext';
 import { toast } from '@/hooks/use-toast';
 import { Star, Search, Globe, Loader2 } from 'lucide-react';
+import LiveSearchInput from '@/components/LiveSearchInput';
 import { SearchResult, QuoteData } from '@/lib/api/market';
 
 type ScFilters = { type: string; cap: string; signal: string; perf: string; country: string };
