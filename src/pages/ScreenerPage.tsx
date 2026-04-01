@@ -4,6 +4,7 @@ import { formatPct } from '@/data/market-data';
 import { useWatchlist } from '@/context/WatchlistContext';
 import { toast } from '@/hooks/use-toast';
 import { Star, Search, Globe, Loader2 } from 'lucide-react';
+import LiveSearchInput from '@/components/LiveSearchInput';
 import { SearchResult, QuoteData } from '@/lib/api/market';
 
 type ScFilters = { type: string; cap: string; signal: string; perf: string; country: string };
@@ -139,24 +140,14 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
       </div>
 
       {/* Search bar */}
-      <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2.5">
-        <Search className="w-4 h-4 text-muted-foreground" />
-        <input
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder="Search globally... Samsung, Toyota, Alibaba, any Korean stock, Indian ETF..."
-          className="bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground w-full"
-        />
-        {isSearching && <Loader2 className="w-4 h-4 text-primary animate-spin" />}
-        {searchQuery && !isSearching && (
-          <button onClick={() => { setSearchQuery(''); setLiveResults([]); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded bg-secondary">Clear</button>
-        )}
-        {liveResults.length > 0 && (
-          <div className="flex items-center gap-1 text-[9px] text-primary font-bold">
-            <Globe className="w-3 h-3" /> LIVE
-          </div>
-        )}
-      </div>
+      <LiveSearchInput
+        onSelect={(sym) => { setSearchQuery(sym); }}
+        placeholder="Search globally... Samsung, Toyota, Alibaba, any Korean stock, Indian ETF..."
+        className="w-full"
+        value={searchQuery}
+        onValueChange={setSearchQuery}
+        showDropdown={false}
+      />
 
       <div className="bg-card border border-border rounded-xl p-3.5">
         {filterRow('TYPE', 'type', [{ val: 'all', label: 'All' }, { val: 'stock', label: 'Stocks' }, { val: 'crypto', label: 'Crypto' }, { val: 'etf', label: 'ETFs' }, { val: 'bond', label: 'Bonds' }, { val: 'commodity', label: 'Commodities' }, { val: 'forex', label: 'Forex' }])}
@@ -193,7 +184,7 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
                 </td></tr>
               )}
               {data.map((a, i) => (
-                <tr key={a.sym} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors" onClick={() => onNavigate?.('charts', a.sym)}>
+                <tr key={a.sym} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors" onClick={() => onNavigate?.('markets', a.sym)}>
                   <td className="p-[10px] px-[11px]" onClick={e => { e.stopPropagation(); handleToggleWatchlist(a.sym); }}>
                     <Star className={`w-3.5 h-3.5 cursor-pointer transition-colors ${isInWatchlist(a.sym) ? 'fill-primary text-primary' : 'text-muted-foreground/40 hover:text-foreground'}`} />
                   </td>

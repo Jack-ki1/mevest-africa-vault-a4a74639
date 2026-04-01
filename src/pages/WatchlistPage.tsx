@@ -91,7 +91,7 @@ export default function WatchlistPage({ onNavigate }: WatchlistPageProps) {
                   {watchlistAssets.map(a => {
                     const flash = a.price > a.prevPrice ? 'price-up' : a.price < a.prevPrice ? 'price-down' : '';
                     return (
-                      <tr key={a.sym} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors" onClick={() => onNavigate?.('charts', a.sym)}>
+                      <tr key={a.sym} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors" onClick={() => onNavigate?.('markets', a.sym)}>
                         <td className="p-[10px] px-[11px]">
                           <div className="font-bold text-[13px]">{a.sym}</div>
                           <div className="text-[10px] text-muted-foreground">{a.name}</div>
@@ -129,7 +129,7 @@ function WatchlistCard({ asset, onRemove, onNavigate }: { asset: any; onRemove: 
   const flash = asset.price > asset.prevPrice ? 'price-up' : asset.price < asset.prevPrice ? 'price-down' : '';
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/25 transition-colors cursor-pointer" onClick={() => onNavigate?.('charts', asset.sym)}>
+    <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/25 transition-colors cursor-pointer" onClick={() => onNavigate?.('markets', asset.sym)}>
       <div className="px-3.5 py-3 flex items-center justify-between border-b border-border">
         <div>
           <div className="font-mono text-sm font-semibold text-foreground">{asset.sym}</div>

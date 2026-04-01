@@ -15,10 +15,8 @@ const NAV_SECTIONS = [
   {
     label: 'Markets',
     items: [
-      { id: 'charts', label: 'Charts', icon: TrendingUp },
+      { id: 'markets', label: 'Markets', icon: TrendingUp },
       { id: 'screener', label: 'Screener', icon: List },
-      { id: 'heatmap', label: 'Heatmap', icon: Grid3X3 },
-      { id: 'marketwatch', label: 'Market Watch', icon: BarChart3 },
       { id: 'calendar', label: 'Calendar', icon: Calendar },
       { id: 'news', label: 'News Feed', icon: FileText, hasNotif: true },
     ],
