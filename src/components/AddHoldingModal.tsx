@@ -156,18 +156,22 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
       case 'commodity':
         return (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Symbol / Ticker</label>
-                <input value={form.symbol || ''} onChange={e => handleSymbolChange(e.target.value)} placeholder="e.g. AAPL" className={inputCls('symbol')} />
-                {errors.symbol && <span className="text-[10px] text-destructive mt-0.5 block">{errors.symbol}</span>}
-              </div>
-              <div>
-                <label className={labelCls}>Exchange</label>
-                <select value={form.exchange || countryData.exchanges[0]} onChange={e => update('exchange', e.target.value)} className={selectCls}>
-                  {countryData.exchanges.map(e => <option key={e}>{e}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className={labelCls}>Search & Select Asset</label>
+              <LiveSearchInput
+                onSelect={async (sym, name, exchange) => {
+                  setForm(f => ({ ...f, symbol: sym, name, exchange: exchange || f.exchange || '' }));
+                  try {
+                    const q = await marketApi.getQuotes([sym]);
+                    if (q[sym]) setForm(f => ({ ...f, price: String(q[sym].price.toFixed(2)) }));
+                  } catch {}
+                }}
+                placeholder="Search any stock, ETF, crypto..."
+                size="sm"
+                value={form.symbol}
+                onValueChange={val => update('symbol', val)}
+              />
+              {errors.symbol && <span className="text-[10px] text-destructive mt-0.5 block">{errors.symbol}</span>}
             </div>
             {isKenya && assetType === 'stock' && (
               <div>
