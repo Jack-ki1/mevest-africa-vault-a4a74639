@@ -90,6 +90,9 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
         ))}
       </div>
 
+      {/* AI Insights */}
+      <AiInsightsPanel />
+
       {/* Chart + Allocation */}
       <div className="grid gap-3.5" style={{ gridTemplateColumns: '2fr 1fr' }}>
         <div className="bg-card border border-border rounded-xl overflow-hidden">
