@@ -4,6 +4,7 @@ import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct, genLine } from '@/data/market-data';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import AiInsightsPanel from '@/components/AiInsightsPanel';
 
 const COLORS = ['hsl(218 90% 66%)', 'hsl(160 60% 52%)', 'hsl(258 89% 76%)', 'hsl(38 95% 55%)', 'hsl(0 76% 58%)', 'hsl(25 95% 55%)'];
 const TIMEFRAMES = [
@@ -70,7 +71,7 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   return (
     <div className="space-y-3.5">
       {/* Stats */}
-      <div className="grid grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/20 transition-colors group">
             <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.8px]">{s.label}</div>
@@ -89,8 +90,11 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
         ))}
       </div>
 
+      {/* AI Insights */}
+      <AiInsightsPanel />
+
       {/* Chart + Allocation */}
-      <div className="grid gap-3.5" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3.5">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-[15px] py-3 border-b border-border flex items-center">
             <span className="font-display text-[13px] font-bold">Portfolio Performance</span>

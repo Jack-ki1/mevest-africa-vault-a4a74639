@@ -14,7 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      holdings: {
+        Row: {
+          cost_basis: number
+          country: string | null
+          created_at: string | null
+          id: string
+          name: string
+          shares: number
+          symbol: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          cost_basis: number
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          shares: number
+          symbol: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          cost_basis?: number
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          shares?: number
+          symbol?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          currency: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          timezone: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          timezone?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          currency?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          timezone?: string | null
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          id: string
+          settings: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          settings?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          settings?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      watchlist_items: {
+        Row: {
+          added_at: string | null
+          id: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string | null
+          id?: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string | null
+          id?: string
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

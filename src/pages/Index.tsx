@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
+import { Menu } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import AddHoldingModal from '@/components/AddHoldingModal';
+import AiChatWidget from '@/components/AiChatWidget';
 import DashboardPage from '@/pages/DashboardPage';
 import PortfolioPage from '@/pages/PortfolioPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
@@ -23,12 +25,14 @@ export default function Index() {
   const [page, setPage] = useState('dashboard');
   const [modalOpen, setModalOpen] = useState(false);
   const [chartSymbol, setChartSymbol] = useState<string | undefined>();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const openModal = () => setModalOpen(true);
 
   const handleNavigate = useCallback((targetPage: string, sym?: string) => {
     setPage(targetPage);
     if (sym) setChartSymbol(sym);
+    setSidebarOpen(false);
   }, []);
 
   const renderPage = () => {
@@ -48,14 +52,20 @@ export default function Index() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar activePage={page} onNavigate={setPage} />
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <Sidebar activePage={page} onNavigate={handleNavigate} mobileOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar title={PAGE_TITLES[page] || 'Dashboard'} onAddHolding={openModal} onNavigate={handleNavigate} />
-        <div className="flex-1 overflow-y-auto p-[18px]">
+        <Topbar title={PAGE_TITLES[page] || 'Dashboard'} onAddHolding={openModal} onNavigate={handleNavigate} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+        <div className="flex-1 overflow-y-auto p-3 md:p-[18px]">
           {renderPage()}
         </div>
       </div>
       <AddHoldingModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <AiChatWidget />
     </div>
   );
 }
