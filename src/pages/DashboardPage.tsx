@@ -4,6 +4,7 @@ import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct, genLine } from '@/data/market-data';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import AiInsightsPanel from '@/components/AiInsightsPanel';
 
 const COLORS = ['hsl(218 90% 66%)', 'hsl(160 60% 52%)', 'hsl(258 89% 76%)', 'hsl(38 95% 55%)', 'hsl(0 76% 58%)', 'hsl(25 95% 55%)'];
 const TIMEFRAMES = [
