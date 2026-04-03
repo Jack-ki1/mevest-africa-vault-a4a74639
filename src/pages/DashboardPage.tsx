@@ -71,7 +71,7 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   return (
     <div className="space-y-3.5">
       {/* Stats */}
-      <div className="grid grid-cols-4 max-lg:grid-cols-2 max-sm:grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/20 transition-colors group">
             <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.8px]">{s.label}</div>
