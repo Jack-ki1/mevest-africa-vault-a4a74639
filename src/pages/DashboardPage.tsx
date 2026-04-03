@@ -94,7 +94,7 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
       <AiInsightsPanel />
 
       {/* Chart + Allocation */}
-      <div className="grid gap-3.5" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3.5">
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-[15px] py-3 border-b border-border flex items-center">
             <span className="font-display text-[13px] font-bold">Portfolio Performance</span>
