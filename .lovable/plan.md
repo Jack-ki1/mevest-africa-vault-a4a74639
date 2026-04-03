@@ -1,99 +1,167 @@
 
 
-# Plan: Unified Search, Merged Markets Page, and Live Data Everywhere
+# Plan: Auth, Mobile Responsive, AI Features, and Search Verification
 
 ## Summary
 
-1. **Fix and supercharge all search bars** — every search input (Topbar, Add Holding, Screener) will use the same live Yahoo Finance search engine via the `market-search` edge function, returning unlimited global results.
-2. **Merge Charts + Heatmap + Market Watch** into a single tabbed "Markets" page with three sub-views (Charts, Heatmap, Market Watch), reducing sidebar clutter.
-3. **Make all market-facing sections use live API data** — Dashboard movers, Heatmap prices, Charts OHLCV, and Screener quotes will all pull from the `market-quotes` and `market-chart` edge functions instead of static mock data.
+Four major enhancements: (1) verify/fix search functionality, (2) add user authentication with persistent data, (3) make the app fully mobile-responsive with hamburger sidebar, (4) add AI-powered features.
 
 ---
 
-## Changes
+## 1. Verify and Fix Search
 
-### 1. Unified Live Search Component
+- Test the `LiveSearchInput` component and `market-search` edge function
+- Ensure results render correctly and navigation to Markets page works on selection
+- No major changes expected -- the edge function and component are already wired
 
-**New file: `src/components/LiveSearchInput.tsx`**
+## 2. User Authentication with Data Persistence
 
-A reusable search input component that:
-- Calls `market-search` edge function with 300ms debounce
-- Shows dropdown with symbol, name, exchange, and type for each result
-- Supports `onSelect(symbol, name)` callback
-- Used in: Topbar search, Add Holding symbol field, and Screener search bar
-- Returns up to 20 results from any global exchange
+### Database Migration
 
-### 2. Improve Topbar Search (`src/components/layout/Topbar.tsx`)
+Create tables with RLS:
 
-- Replace the current dual local+live search with the new `LiveSearchInput` component
-- Remove the separate local results section — all results come from the live API
-- Keep the ⌘K shortcut and navigate-to-charts behavior
+```sql
+-- Profiles table
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT,
+  email TEXT,
+  avatar_url TEXT,
+  currency TEXT DEFAULT 'USD',
+  timezone TEXT DEFAULT 'Africa/Nairobi',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
+CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
+CREATE POLICY "Users insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
-### 3. Improve Add Holding Modal (`src/components/AddHoldingModal.tsx`)
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, email)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', ''), NEW.email);
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
-- Replace the static text input for symbol/name with `LiveSearchInput`
-- When user selects a result, auto-fill symbol, name, exchange, and fetch the current price via `market-quotes`
-- Works for any asset worldwide — Korean, Brazilian, Indian stocks all searchable
+-- Holdings table
+CREATE TABLE public.holdings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  symbol TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT DEFAULT 'stock',
+  shares NUMERIC NOT NULL,
+  cost_basis NUMERIC NOT NULL,
+  country TEXT DEFAULT 'US',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, symbol)
+);
+ALTER TABLE public.holdings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users CRUD own holdings" ON public.holdings FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
-### 4. Merge Charts + Heatmap + Market Watch into "Markets" Page
+-- Watchlist table
+CREATE TABLE public.watchlist_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  symbol TEXT NOT NULL,
+  added_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, symbol)
+);
+ALTER TABLE public.watchlist_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users CRUD own watchlist" ON public.watchlist_items FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
-**Modified file: `src/pages/MarketsPage.tsx`** (rename from one of the existing files)
+-- User settings
+CREATE TABLE public.user_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  settings JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users CRUD own settings" ON public.user_settings FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+```
 
-- Single page with 3 tabs: **Charts** | **Heatmap** | **Market Watch**
-- Charts tab: current ChartsPage content, but with `LiveSearchInput` replacing the static symbol dropdown, and OHLCV/fundamentals pulled live from `market-quotes`
-- Heatmap tab: current HeatmapPage content, with live prices from `market-quotes` replacing static `SECTOR_HEATMAP` data
-- Market Watch tab: current MarketWatchPage content (already live)
+### New Files
 
-**Sidebar update (`src/components/layout/Sidebar.tsx`):**
-- Remove separate Charts, Heatmap, Market Watch entries
-- Add single "Markets" entry under the Markets section
+- **`src/pages/AuthPage.tsx`** -- Login/signup form with email+password, toggle between modes, full_name field on signup. Styled to match MEVEST branding.
+- **`src/context/AuthContext.tsx`** -- Wraps `supabase.auth.onAuthStateChange`, provides `user`, `signIn`, `signUp`, `signOut`, `loading` state. Set up listener before `getSession()`.
+- **`src/pages/ResetPasswordPage.tsx`** -- Password reset page at `/reset-password` route.
 
-**Index update (`src/pages/Index.tsx`):**
-- Route `markets` to the new merged page
-- Remove old individual routes
+### Modified Files
 
-### 5. Live Data for Dashboard (`src/pages/DashboardPage.tsx`)
+- **`src/App.tsx`** -- Wrap with `AuthProvider`, show `AuthPage` when not authenticated, show main app when authenticated. Add `/reset-password` route.
+- **`src/context/PortfolioContext.tsx`** -- Load/save holdings from `public.holdings` table using authenticated user's ID. Replace `useState` with Supabase queries.
+- **`src/context/WatchlistContext.tsx`** -- Load/save watchlist from `public.watchlist_items` table.
+- **`src/pages/SettingsPage.tsx`** -- Load/save profile from `public.profiles` and settings from `public.user_settings`. Add logout button.
+- **`src/components/layout/Sidebar.tsx`** -- Show authenticated user's name/initials in footer instead of hardcoded "Alex Kamau".
 
-- Market Movers section: fetch top gainers/losers from `market-quotes` using a curated list of ~30 symbols (S&P large caps) instead of static mock data
-- Sector performance: keep as simulated (no free API for sector data), but refresh from allAssets live prices
-- Fear & Greed: keep as simulated gauge (no free API)
+## 3. Mobile Responsive with Hamburger Menu
 
-### 6. Live Data for Charts Tab (within merged Markets page)
+### Modified Files
 
-- Replace `genLine()` mock chart data with real historical data from `market-chart` edge function
-- OHLCV panel: show real open/high/low/close/volume from the quote data
-- Fundamentals panel: show real market cap, P/E, 52W high/low from quote data
-- Technical indicators (MA, RSI, MACD, BB, FIB) calculated from real chart points
+- **`src/pages/Index.tsx`** -- Add `sidebarOpen` state, pass to Sidebar. Add overlay when open on mobile.
+- **`src/components/layout/Sidebar.tsx`** -- On mobile (`<768px`): render as a slide-over drawer with full width (~260px), overlay backdrop. Close on nav item click. Add close button.
+- **`src/components/layout/Topbar.tsx`** -- Add hamburger menu button (visible only on mobile) that toggles sidebar. Show search on mobile too (smaller).
+- **`src/index.css`** -- Add responsive utility classes for sidebar transitions.
+- **Key pages** (Dashboard, Portfolio, Markets, etc.) -- Ensure grid layouts use responsive breakpoints (`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`).
 
-### 7. Live Data for Heatmap Tab
+## 4. AI-Powered Features
 
-- Fetch quotes for heatmap symbols via `market-quotes` on mount
-- Color tiles based on real `changePercent` values
-- Keep treemap layout logic unchanged
+### New Edge Function
+
+- **`supabase/functions/ai-insights/index.ts`** -- Uses Lovable AI (via `LOVABLE_API_KEY`) with `google/gemini-2.5-flash` model. Accepts a portfolio summary and returns:
+  - Portfolio health analysis
+  - Risk assessment
+  - Actionable recommendations
+  - Market sentiment summary
+
+### New Files
+
+- **`src/components/AiInsightsPanel.tsx`** -- A collapsible panel on the Dashboard showing AI-generated insights about the user's portfolio. Features:
+  - "Analyze Portfolio" button that sends holdings data to the edge function
+  - Displays risk score, diversification advice, sector exposure warnings
+  - Refreshes on demand (not automatic to save API calls)
+
+- **`src/components/AiChatWidget.tsx`** -- A floating chat bubble (bottom-right) that opens a mini chat window. Users can ask questions like "What's my best performing stock?" or "Should I diversify?" The AI responds using portfolio context. Uses the same edge function with a `mode: 'chat'` parameter.
+
+### Modified Files
+
+- **`src/pages/DashboardPage.tsx`** -- Add `AiInsightsPanel` component below the portfolio overview cards.
+- **`src/pages/Index.tsx`** -- Add `AiChatWidget` as a global floating component.
 
 ---
 
-## Technical Details
+## Technical Notes
 
-- **LiveSearchInput** uses `marketApi.search()` internally with `useEffect` + debounce timer
-- Charts tab calls `marketApi.getChart(symbol, range, interval)` and transforms `ChartPoint[]` into Recharts-compatible data
-- Range/interval mapping: `1D→1d/5m`, `1W→5d/15m`, `1M→1mo/1d`, `3M→3mo/1d`, `1Y→1y/1wk`
-- Heatmap fetches ~20 symbols on mount via `marketApi.getQuotes()`
-- All API calls go through existing edge functions (no new backend needed)
-- Error handling: fall back to simulated data if API calls fail
+- Auth uses email+password only (no auto-confirm -- users must verify email)
+- AI uses `LOVABLE_API_KEY` (already configured) with Gemini 2.5 Flash for cost efficiency
+- Mobile sidebar uses CSS transforms for smooth slide animation
+- All Supabase queries use the authenticated client -- RLS handles data isolation
+- Holdings/watchlist contexts fall back to local state if user is not authenticated
 
-## Files Modified
-- `src/components/LiveSearchInput.tsx` (new)
-- `src/pages/MarketsPage.tsx` (new — merged page)
-- `src/components/layout/Topbar.tsx` (use LiveSearchInput)
-- `src/components/AddHoldingModal.tsx` (use LiveSearchInput for symbol)
-- `src/components/layout/Sidebar.tsx` (merge nav items)
-- `src/pages/Index.tsx` (update routing)
-- `src/pages/ScreenerPage.tsx` (use LiveSearchInput)
-- `src/pages/DashboardPage.tsx` (live market movers)
+## File Summary
 
-## Files Removed
-- `src/pages/ChartsPage.tsx` (merged into MarketsPage)
-- `src/pages/HeatmapPage.tsx` (merged into MarketsPage)
-- `src/pages/MarketWatchPage.tsx` (merged into MarketsPage)
+| Action | File |
+|--------|------|
+| New | `src/pages/AuthPage.tsx` |
+| New | `src/context/AuthContext.tsx` |
+| New | `src/pages/ResetPasswordPage.tsx` |
+| New | `src/components/AiInsightsPanel.tsx` |
+| New | `src/components/AiChatWidget.tsx` |
+| New | `supabase/functions/ai-insights/index.ts` |
+| Edit | `src/App.tsx` |
+| Edit | `src/pages/Index.tsx` |
+| Edit | `src/components/layout/Sidebar.tsx` |
+| Edit | `src/components/layout/Topbar.tsx` |
+| Edit | `src/context/PortfolioContext.tsx` |
+| Edit | `src/context/WatchlistContext.tsx` |
+| Edit | `src/pages/SettingsPage.tsx` |
+| Edit | `src/pages/DashboardPage.tsx` |
+| Edit | `src/index.css` |
+| Migration | Create profiles, holdings, watchlist_items, user_settings tables |
 
