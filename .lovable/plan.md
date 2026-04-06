@@ -1,167 +1,116 @@
 
 
-# Plan: Auth, Mobile Responsive, AI Features, and Search Verification
+# Plan: Enhanced Auth, Agentic AI Chat, Settings API Keys, Screener Overhaul, and Improved Data APIs
 
 ## Summary
 
-Four major enhancements: (1) verify/fix search functionality, (2) add user authentication with persistent data, (3) make the app fully mobile-responsive with hamburger sidebar, (4) add AI-powered features.
+Five enhancements: (1) Add Google OAuth sign-in, (2) make the AI chatbot agentic with tool-calling capabilities, (3) add secure third-party API key management in Settings, (4) overhaul the Screener with dynamic dropdowns fetching live data, (5) improve existing edge functions for better real-time coverage.
 
 ---
 
-## 1. Verify and Fix Search
+## 1. Add Google OAuth Sign-In
 
-- Test the `LiveSearchInput` component and `market-search` edge function
-- Ensure results render correctly and navigation to Markets page works on selection
-- No major changes expected -- the edge function and component are already wired
+**Files:** `src/pages/AuthPage.tsx`
 
-## 2. User Authentication with Data Persistence
+- Use the Lovable Cloud managed Google OAuth (no extra config needed)
+- Add a "Sign in with Google" button below the email/password form with a divider ("or")
+- Import `lovable.auth.signInWithOAuth("google", ...)` from the lovable module
+- Run the **Configure Social Auth** tool first to generate the lovable integration module
 
-### Database Migration
+## 2. Agentic AI Chatbot
 
-Create tables with RLS:
+**Files:** `supabase/functions/ai-insights/index.ts`, `src/components/AiChatWidget.tsx`
 
-```sql
--- Profiles table
-CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name TEXT,
-  email TEXT,
-  avatar_url TEXT,
-  currency TEXT DEFAULT 'USD',
-  timezone TEXT DEFAULT 'Africa/Nairobi',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id);
-CREATE POLICY "Users insert own profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
+### Edge Function Changes
+- Add tool definitions to the AI model call for agentic capabilities:
+  - `get_portfolio_summary` — returns user's holdings summary
+  - `get_stock_quote` — fetches real-time quote for any symbol via Yahoo Finance
+  - `get_market_news` — fetches latest news for a topic/symbol
+  - `add_to_watchlist` — adds a symbol to user's watchlist (requires auth)
+  - `get_chart_data` — fetches chart data for a symbol
+- Implement a tool-calling loop: send messages → check for tool calls → execute tools → send results back → get final response
+- Stream the final text response back to the client
 
--- Auto-create profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-BEGIN
-  INSERT INTO public.profiles (id, full_name, email)
-  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', ''), NEW.email);
-  RETURN NEW;
-END;
-$$;
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+### Widget Changes
+- Add markdown rendering using `react-markdown` for rich AI responses (tables, lists, bold)
+- Show a "tools used" indicator when the AI executes operations
+- Add suggested quick actions: "Analyze my portfolio", "What's trending?", "Add AAPL to watchlist"
+- Increase chat window size slightly for better readability
 
--- Holdings table
-CREATE TABLE public.holdings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  symbol TEXT NOT NULL,
-  name TEXT NOT NULL,
-  type TEXT DEFAULT 'stock',
-  shares NUMERIC NOT NULL,
-  cost_basis NUMERIC NOT NULL,
-  country TEXT DEFAULT 'US',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, symbol)
-);
-ALTER TABLE public.holdings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users CRUD own holdings" ON public.holdings FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+## 3. Secure Third-Party API Key Management in Settings
 
--- Watchlist table
-CREATE TABLE public.watchlist_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  symbol TEXT NOT NULL,
-  added_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, symbol)
-);
-ALTER TABLE public.watchlist_items ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users CRUD own watchlist" ON public.watchlist_items FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+**Files:** `src/pages/SettingsPage.tsx`
 
--- User settings
-CREATE TABLE public.user_settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-  settings JSONB DEFAULT '{}'::jsonb,
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users CRUD own settings" ON public.user_settings FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-```
+- Replace the current mock "API Keys" tab with a **"Data Sources & API Keys"** section
+- Add a form to securely input API keys for:
+  - Alpha Vantage
+  - CoinGecko Pro
+  - NewsAPI
+  - Polygon.io
+  - Custom endpoints
+- Store API keys in the `user_settings` table (JSONB `settings` field) — keys are encrypted client-side before storage using a simple hashing display (show only last 4 chars)
+- Each key entry shows: provider name, masked key, status (connected/invalid), last tested timestamp
+- Add a "Test Connection" button per key that calls the respective API to validate
+- Show the existing "Connected Data Sources" section with real status based on stored keys
 
-### New Files
+## 4. Screener Overhaul with Dynamic Dropdowns
 
-- **`src/pages/AuthPage.tsx`** -- Login/signup form with email+password, toggle between modes, full_name field on signup. Styled to match MEVEST branding.
-- **`src/context/AuthContext.tsx`** -- Wraps `supabase.auth.onAuthStateChange`, provides `user`, `signIn`, `signUp`, `signOut`, `loading` state. Set up listener before `getSession()`.
-- **`src/pages/ResetPasswordPage.tsx`** -- Password reset page at `/reset-password` route.
+**Files:** `src/pages/ScreenerPage.tsx`, `src/components/LiveSearchInput.tsx`
 
-### Modified Files
+### Replace Static Filter Buttons with Smart Dropdowns
+- **TYPE**: Dropdown with categories: All, Stocks, ETFs, Mutual Funds, Crypto, Bonds, Commodities, Forex, Indices, ADRs, REITs — sourced from Yahoo Finance `quoteType` taxonomy
+- **COUNTRY/EXCHANGE**: Searchable dropdown listing 60+ exchanges fetched from a static comprehensive list (NYSE, NASDAQ, LSE, TSE, NSE Kenya, JSE, BSE India, KRX Korea, etc.) grouped by region
+- **PERFORMANCE**: Dropdown with: All, Top Gainers, Top Losers, Most Active, 52W High, 52W Low, High Dividend
+- **SECTOR**: New dropdown filter with all GICS sectors (Technology, Healthcare, Finance, Energy, etc.)
 
-- **`src/App.tsx`** -- Wrap with `AuthProvider`, show `AuthPage` when not authenticated, show main app when authenticated. Add `/reset-password` route.
-- **`src/context/PortfolioContext.tsx`** -- Load/save holdings from `public.holdings` table using authenticated user's ID. Replace `useState` with Supabase queries.
-- **`src/context/WatchlistContext.tsx`** -- Load/save watchlist from `public.watchlist_items` table.
-- **`src/pages/SettingsPage.tsx`** -- Load/save profile from `public.profiles` and settings from `public.user_settings`. Add logout button.
-- **`src/components/layout/Sidebar.tsx`** -- Show authenticated user's name/initials in footer instead of hardcoded "Alex Kamau".
+### Improved Search
+- Make the search bar more prominent with larger size
+- Add search result count and "Load more" pagination
+- Show richer result cards: price, change%, volume, market cap, sector
+- Add column sorting by clicking headers
+- Add infinite scroll or "Load 50 more" button for large result sets
 
-## 3. Mobile Responsive with Hamburger Menu
+## 5. Improve Real-Time Data APIs
 
-### Modified Files
+**Files:** `supabase/functions/market-quotes/index.ts`, `supabase/functions/market-news/index.ts`, `supabase/functions/market-search/index.ts`
 
-- **`src/pages/Index.tsx`** -- Add `sidebarOpen` state, pass to Sidebar. Add overlay when open on mobile.
-- **`src/components/layout/Sidebar.tsx`** -- On mobile (`<768px`): render as a slide-over drawer with full width (~260px), overlay backdrop. Close on nav item click. Add close button.
-- **`src/components/layout/Topbar.tsx`** -- Add hamburger menu button (visible only on mobile) that toggles sidebar. Show search on mobile too (smaller).
-- **`src/index.css`** -- Add responsive utility classes for sidebar transitions.
-- **Key pages** (Dashboard, Portfolio, Markets, etc.) -- Ensure grid layouts use responsive breakpoints (`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`).
+### Market Quotes
+- Increase default batch size from 20 to 50 symbols per request
+- Add retry logic with exponential backoff on Yahoo Finance failures
+- Return additional fields: volume, marketCap, pe ratio, dividend yield, 52W range
+- Add a `trending` endpoint mode that returns Yahoo's trending tickers
 
-## 4. AI-Powered Features
+### Market News
+- Add category filtering: general, business, technology, crypto, forex, earnings
+- Add symbol-specific news: pass `tickers` param to get news for specific holdings
+- Return more metadata: sentiment score (positive/negative/neutral based on title), read time
 
-### New Edge Function
-
-- **`supabase/functions/ai-insights/index.ts`** -- Uses Lovable AI (via `LOVABLE_API_KEY`) with `google/gemini-2.5-flash` model. Accepts a portfolio summary and returns:
-  - Portfolio health analysis
-  - Risk assessment
-  - Actionable recommendations
-  - Market sentiment summary
-
-### New Files
-
-- **`src/components/AiInsightsPanel.tsx`** -- A collapsible panel on the Dashboard showing AI-generated insights about the user's portfolio. Features:
-  - "Analyze Portfolio" button that sends holdings data to the edge function
-  - Displays risk score, diversification advice, sector exposure warnings
-  - Refreshes on demand (not automatic to save API calls)
-
-- **`src/components/AiChatWidget.tsx`** -- A floating chat bubble (bottom-right) that opens a mini chat window. Users can ask questions like "What's my best performing stock?" or "Should I diversify?" The AI responds using portfolio context. Uses the same edge function with a `mode: 'chat'` parameter.
-
-### Modified Files
-
-- **`src/pages/DashboardPage.tsx`** -- Add `AiInsightsPanel` component below the portfolio overview cards.
-- **`src/pages/Index.tsx`** -- Add `AiChatWidget` as a global floating component.
+### Market Search
+- Increase `quotesCount` from 20 to 40
+- Add result type filtering (only stocks, only crypto, etc.)
+- Return additional metadata: sector, industry, market cap range
 
 ---
 
-## Technical Notes
+## Technical Details
 
-- Auth uses email+password only (no auto-confirm -- users must verify email)
-- AI uses `LOVABLE_API_KEY` (already configured) with Gemini 2.5 Flash for cost efficiency
-- Mobile sidebar uses CSS transforms for smooth slide animation
-- All Supabase queries use the authenticated client -- RLS handles data isolation
-- Holdings/watchlist contexts fall back to local state if user is not authenticated
+- Google OAuth uses Lovable Cloud's managed credentials — zero configuration needed
+- Agentic AI uses OpenAI-compatible tool-calling format via the Lovable AI gateway with `google/gemini-3-flash-preview`
+- API keys in settings are stored in Supabase `user_settings.settings` JSONB — only masked values displayed in UI
+- Screener dropdowns use Headless UI / custom select components with search built on top of existing shadcn/ui Select
+- All edge function improvements are backward-compatible
 
 ## File Summary
 
 | Action | File |
 |--------|------|
-| New | `src/pages/AuthPage.tsx` |
-| New | `src/context/AuthContext.tsx` |
-| New | `src/pages/ResetPasswordPage.tsx` |
-| New | `src/components/AiInsightsPanel.tsx` |
-| New | `src/components/AiChatWidget.tsx` |
-| New | `supabase/functions/ai-insights/index.ts` |
-| Edit | `src/App.tsx` |
-| Edit | `src/pages/Index.tsx` |
-| Edit | `src/components/layout/Sidebar.tsx` |
-| Edit | `src/components/layout/Topbar.tsx` |
-| Edit | `src/context/PortfolioContext.tsx` |
-| Edit | `src/context/WatchlistContext.tsx` |
-| Edit | `src/pages/SettingsPage.tsx` |
-| Edit | `src/pages/DashboardPage.tsx` |
-| Edit | `src/index.css` |
-| Migration | Create profiles, holdings, watchlist_items, user_settings tables |
+| Edit | `src/pages/AuthPage.tsx` (add Google OAuth button) |
+| Edit | `supabase/functions/ai-insights/index.ts` (add tool-calling loop) |
+| Edit | `src/components/AiChatWidget.tsx` (markdown, quick actions, tool indicators) |
+| Edit | `src/pages/SettingsPage.tsx` (API key management UI) |
+| Edit | `src/pages/ScreenerPage.tsx` (dynamic dropdowns, improved search) |
+| Edit | `supabase/functions/market-quotes/index.ts` (more fields, retry, trending) |
+| Edit | `supabase/functions/market-news/index.ts` (categories, sentiment) |
+| Edit | `supabase/functions/market-search/index.ts` (more results, filtering) |
+| Tool | Configure Social Auth (for Google OAuth module) |
 
