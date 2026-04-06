@@ -9,20 +9,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { query } = await req.json();
+    const { query, type } = await req.json();
     if (!query || query.length < 1) {
       return new Response(JSON.stringify({ results: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Use Yahoo Finance autocomplete API (free, no key needed)
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=20&newsCount=0&enableFuzzyQuery=true&quotesQueryId=tss_match_phrase_query`;
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=40&newsCount=0&enableFuzzyQuery=true&quotesQueryId=tss_match_phrase_query`;
 
     const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
 
     if (!response.ok) {
@@ -33,14 +30,33 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json();
-    const results = (data.quotes || []).map((q: any) => ({
+    let results = (data.quotes || []).map((q: any) => ({
       symbol: q.symbol,
       name: q.shortname || q.longname || q.symbol,
       exchange: q.exchange || q.exchDisp || '',
+      exchangeDisplay: q.exchDisp || q.exchange || '',
       type: q.quoteType || 'EQUITY',
       sector: q.sector || '',
       industry: q.industry || '',
+      score: q.score || 0,
     }));
+
+    // Filter by type if specified
+    if (type && type !== 'all') {
+      const typeMap: Record<string, string[]> = {
+        stock: ['EQUITY'],
+        etf: ['ETF'],
+        crypto: ['CRYPTOCURRENCY'],
+        fund: ['MUTUALFUND'],
+        index: ['INDEX'],
+        forex: ['CURRENCY'],
+        commodity: ['FUTURE'],
+      };
+      const allowed = typeMap[type.toLowerCase()] || [];
+      if (allowed.length > 0) {
+        results = results.filter((r: any) => allowed.includes(r.type));
+      }
+    }
 
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

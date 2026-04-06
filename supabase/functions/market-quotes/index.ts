@@ -3,36 +3,50 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      });
+      if (res.ok) return res;
+      if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    } catch {
+      if (i < retries) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+  throw new Error('Fetch failed after retries');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { symbols } = await req.json();
+    const body = await req.json();
+    const { symbols, mode } = body;
+
+    // Trending mode
+    if (mode === 'trending') {
+      const res = await fetchWithRetry('https://query2.finance.yahoo.com/v1/finance/trending/US?count=25');
+      const data = await res.json();
+      const tickers = (data.finance?.result?.[0]?.quotes || []).map((q: any) => q.symbol).slice(0, 25);
+      return new Response(JSON.stringify({ trending: tickers }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
       return new Response(JSON.stringify({ quotes: {} }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Limit to 50 symbols per request
     const syms = symbols.slice(0, 50).join(',');
-    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,shortName,longName,currency,exchange,quoteType,regularMarketPreviousClose,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow,fiftyTwoWeekHigh,fiftyTwoWeekLow,fiftyDayAverage,twoHundredDayAverage`;
+    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,shortName,longName,currency,exchange,quoteType,regularMarketPreviousClose,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow,fiftyTwoWeekHigh,fiftyTwoWeekLow,fiftyDayAverage,twoHundredDayAverage,trailingPE,dividendYield,trailingAnnualDividendYield,epsTrailingTwelveMonths`;
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-    });
-
-    if (!response.ok) {
-      console.error('Yahoo quotes failed:', response.status);
-      return new Response(JSON.stringify({ quotes: {} }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
+    const response = await fetchWithRetry(url);
     const data = await response.json();
     const quotes: Record<string, any> = {};
 
@@ -56,6 +70,9 @@ Deno.serve(async (req) => {
         fiftyTwoWeekLow: q.fiftyTwoWeekLow ?? 0,
         fiftyDayAvg: q.fiftyDayAverage ?? 0,
         twoHundredDayAvg: q.twoHundredDayAverage ?? 0,
+        pe: q.trailingPE ?? null,
+        dividendYield: q.dividendYield ?? q.trailingAnnualDividendYield ?? null,
+        eps: q.epsTrailingTwelveMonths ?? null,
       };
     }
 

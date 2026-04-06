@@ -1,15 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Sparkles } from 'lucide-react';
 import { usePortfolio } from '@/context/PortfolioContext';
+import ReactMarkdown from 'react-markdown';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-insights`;
 
+const QUICK_ACTIONS = [
+  '📊 Analyze my portfolio',
+  '📈 What\'s trending today?',
+  '💡 Investment recommendations',
+  '🔍 Look up a stock for me',
+];
+
 export default function AiChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    { role: 'assistant', content: "Hi! I'm **MEVEST AI**. Ask me anything about your portfolio, markets, or investment strategy. 🚀" },
+    { role: 'assistant', content: "Hi! I'm **MEVEST AI** — your agentic financial assistant. I can look up real-time stock quotes, search global markets, fetch news, and analyze your portfolio. Try asking me anything! 🚀" },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,9 +28,10 @@ export default function AiChatWidget() {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages]);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg: Msg = { role: 'user', content: input.trim() };
+  const send = async (text?: string) => {
+    const msgText = text || input.trim();
+    if (!msgText || loading) return;
+    const userMsg: Msg = { role: 'user', content: msgText };
     const allMsgs = [...messages, userMsg];
     setMessages(allMsgs);
     setInput('');
@@ -86,9 +95,8 @@ export default function AiChatWidget() {
         }
       }
 
-      // flush
       if (buffer.trim()) {
-        for (let raw of buffer.split('\n')) {
+        for (const raw of buffer.split('\n')) {
           if (!raw.startsWith('data: ')) continue;
           const json = raw.slice(6).trim();
           if (json === '[DONE]') continue;
@@ -107,23 +115,25 @@ export default function AiChatWidget() {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-50 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center hover:scale-105 transition-transform"
-      >
-        <MessageCircle className="w-5 h-5" />
+      <button onClick={() => setOpen(true)}
+        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center hover:scale-105 transition-transform">
+        <MessageCircle className="w-6 h-6" />
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-[340px] h-[460px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed bottom-5 right-5 z-50 w-[380px] h-[520px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-primary" />
-          <span className="font-semibold text-sm text-foreground">MEVEST AI</span>
-          <span className="text-[8px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-bold">BETA</span>
+          <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <span className="font-semibold text-sm text-foreground">MEVEST AI</span>
+            <span className="ml-2 text-[8px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-bold">AGENTIC</span>
+          </div>
         </div>
         <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
       </div>
@@ -133,10 +143,14 @@ export default function AiChatWidget() {
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'justify-end' : ''}`}>
             {m.role === 'assistant' && <Bot className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />}
-            <div className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
+            <div className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
               m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
             }`}>
-              {m.content}
+              {m.role === 'assistant' ? (
+                <div className="prose prose-xs prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_li]:mb-0 [&_table]:text-[10px] [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs">
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                </div>
+              ) : m.content}
             </div>
             {m.role === 'user' && <User className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />}
           </div>
@@ -144,22 +158,31 @@ export default function AiChatWidget() {
         {loading && !messages[messages.length - 1]?.content && (
           <div className="flex gap-2">
             <Bot className="w-5 h-5 text-primary flex-shrink-0" />
-            <div className="bg-secondary rounded-xl px-3 py-2 text-xs text-muted-foreground">Thinking...</div>
+            <div className="bg-secondary rounded-xl px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+              <Sparkles className="w-3 h-3 animate-pulse" /> Thinking...
+            </div>
           </div>
         )}
       </div>
 
+      {/* Quick Actions */}
+      {messages.length <= 2 && !loading && (
+        <div className="px-3 pb-2 flex flex-wrap gap-1.5">
+          {QUICK_ACTIONS.map(a => (
+            <button key={a} onClick={() => send(a)} className="text-[10px] px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Input */}
       <div className="border-t border-border p-2">
         <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && send()}
-            placeholder="Ask about your portfolio..."
-            className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-          />
-          <button onClick={send} disabled={loading || !input.trim()} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
+          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
+            placeholder="Ask about stocks, markets, portfolio..."
+            className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary" />
+          <button onClick={() => send()} disabled={loading || !input.trim()} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
