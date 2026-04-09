@@ -425,13 +425,37 @@ RULES:
           continue;
         }
 
-        // No more tool calls — stream the final response
+        // No more tool calls — if we have content already, use it; otherwise stream
+        if (msg?.content) {
+          // Convert to SSE format for the client
+          const content = msg.content;
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            start(controller) {
+              // Send content in chunks for streaming feel
+              const chunkSize = 20;
+              for (let j = 0; j < content.length; j += chunkSize) {
+                const chunk = content.slice(j, j + chunkSize);
+                const sseData = JSON.stringify({ choices: [{ delta: { content: chunk } }] });
+                controller.enqueue(encoder.encode(`data: ${sseData}\n\n`));
+              }
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              controller.close();
+            },
+          });
+
+          return new Response(stream, {
+            headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+          });
+        }
+
+        // Fallback: stream a new request without tools
         const streamResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: 'google/gemini-3-flash-preview',
-            messages: currentMessages,
+            messages: currentMessages.filter((m: any) => m.role !== 'tool' && !m.tool_calls),
             stream: true,
           }),
         });
