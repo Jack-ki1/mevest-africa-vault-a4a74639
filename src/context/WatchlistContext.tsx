@@ -15,7 +15,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [watchlist, setWatchlist] = useState<string[]>([]);
 
-  useEffect(() => {
+  const loadWatchlist = useCallback(() => {
     if (!user) { setWatchlist([]); return; }
     supabase
       .from('watchlist_items')
@@ -25,6 +25,15 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         if (data) setWatchlist(data.map((d: any) => d.symbol));
       });
   }, [user]);
+
+  useEffect(() => { loadWatchlist(); }, [loadWatchlist]);
+
+  // Listen for data changes from AI chatbot
+  useEffect(() => {
+    const handler = () => loadWatchlist();
+    window.addEventListener('mevest-data-changed', handler);
+    return () => window.removeEventListener('mevest-data-changed', handler);
+  }, [loadWatchlist]);
 
   const addToWatchlist = useCallback(async (sym: string) => {
     if (!user) return;
