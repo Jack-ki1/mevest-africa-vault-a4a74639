@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MARKET, MarketAsset, TICKER_ITEMS, MARKET_REGIONS, MarketRegionItem } from '@/data/market-data';
 import { marketApi, SearchResult, QuoteData } from '@/lib/api/market';
 
@@ -59,6 +59,7 @@ interface RealtimeMarketContextType {
   allAssets: UniversalAsset[];
   lastUpdate: number;
   isLive: boolean;
+  registerSymbols: (syms: string[]) => void;
 }
 
 const RealtimeMarketContext = createContext<RealtimeMarketContextType | null>(null);
@@ -67,6 +68,7 @@ export function RealtimeMarketProvider({ children }: { children: React.ReactNode
   const [liveQuotes, setLiveQuotes] = useState<Record<string, QuoteData>>({});
   const [isLive, setIsLive] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const [extraSymbols, setExtraSymbols] = useState<string[]>([]);
   const [simulatedPrices, setSimulatedPrices] = useState<Record<string, { price: number; chg: number; chgPct: number; prevPrice: number }>>(() => {
     const initial: Record<string, { price: number; chg: number; chgPct: number; prevPrice: number }> = {};
     Object.entries(BUILTIN_ASSETS).forEach(([key, asset]) => {
@@ -75,10 +77,19 @@ export function RealtimeMarketProvider({ children }: { children: React.ReactNode
     return initial;
   });
 
+  // Allow external components to register symbols for live polling
+  const registerSymbols = useCallback((syms: string[]) => {
+    setExtraSymbols(prev => {
+      const newSyms = syms.filter(s => !prev.includes(s) && !CORE_SYMBOLS.includes(s));
+      return newSyms.length > 0 ? [...prev, ...newSyms] : prev;
+    });
+  }, []);
+
   // Fetch live quotes from Yahoo Finance via edge function
   const fetchLiveQuotes = useCallback(async () => {
     try {
-      const quotes = await marketApi.getQuotes(CORE_SYMBOLS);
+      const allSyms = [...new Set([...CORE_SYMBOLS, ...extraSymbols])];
+      const quotes = await marketApi.getQuotes(allSyms);
       if (Object.keys(quotes).length > 0) {
         setLiveQuotes(quotes);
         setIsLive(true);
@@ -87,12 +98,12 @@ export function RealtimeMarketProvider({ children }: { children: React.ReactNode
     } catch (e) {
       console.warn('Live quotes unavailable, using simulation:', e);
     }
-  }, []);
+  }, [extraSymbols]);
 
-  // Initial fetch + polling every 15 seconds
+  // Initial fetch + polling every 30 seconds
   useEffect(() => {
     fetchLiveQuotes();
-    const interval = setInterval(fetchLiveQuotes, 15000);
+    const interval = setInterval(fetchLiveQuotes, 30000);
     return () => clearInterval(interval);
   }, [fetchLiveQuotes]);
 
@@ -194,7 +205,7 @@ export function RealtimeMarketProvider({ children }: { children: React.ReactNode
   }, [liveQuotes, prices]);
 
   return (
-    <RealtimeMarketContext.Provider value={{ prices, tickerItems, searchAssets, searchAssetsLive, getQuotesLive, getAsset, allAssets, lastUpdate, isLive }}>
+    <RealtimeMarketContext.Provider value={{ prices, tickerItems, searchAssets, searchAssetsLive, getQuotesLive, getAsset, allAssets, lastUpdate, isLive, registerSymbols }}>
       {children}
     </RealtimeMarketContext.Provider>
   );
