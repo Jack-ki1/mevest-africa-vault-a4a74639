@@ -30,8 +30,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load holdings from DB
-  useEffect(() => {
+  const loadHoldings = useCallback(() => {
     if (!user) { setHoldings([]); setLoading(false); return; }
     setLoading(true);
     supabase
@@ -55,6 +54,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       });
   }, [user]);
+
+  useEffect(() => { loadHoldings(); }, [loadHoldings]);
+
+  // Listen for data changes from AI chatbot
+  useEffect(() => {
+    const handler = () => loadHoldings();
+    window.addEventListener('mevest-data-changed', handler);
+    return () => window.removeEventListener('mevest-data-changed', handler);
+  }, [loadHoldings]);
 
   const addHolding = useCallback(async (h: Omit<Holding, 'price' | 'sector' | 'country' | 'color'>) => {
     if (!user) return;
