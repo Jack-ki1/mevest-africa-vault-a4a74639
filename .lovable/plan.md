@@ -1,116 +1,128 @@
 
 
-# Plan: Enhanced Auth, Agentic AI Chat, Settings API Keys, Screener Overhaul, and Improved Data APIs
+# Plan: Agentic AI, Enhanced APIs/Search, Real-Time Data, and README Documentation
 
 ## Summary
 
-Five enhancements: (1) Add Google OAuth sign-in, (2) make the AI chatbot agentic with tool-calling capabilities, (3) add secure third-party API key management in Settings, (4) overhaul the Screener with dynamic dropdowns fetching live data, (5) improve existing edge functions for better real-time coverage.
+Four workstreams: (1) Make the AI chatbot fully agentic with execution capabilities (add/remove holdings, manage watchlist, navigate app, analyze charts), (2) improve all APIs and search components, (3) ensure real-time data across all sections, (4) write a comprehensive README.
 
 ---
 
-## 1. Add Google OAuth Sign-In
+## 1. Fully Agentic AI Chatbot
 
-**Files:** `src/pages/AuthPage.tsx`
+### Edge Function (`supabase/functions/ai-insights/index.ts`)
 
-- Use the Lovable Cloud managed Google OAuth (no extra config needed)
-- Add a "Sign in with Google" button below the email/password form with a divider ("or")
-- Import `lovable.auth.signInWithOAuth("google", ...)` from the lovable module
-- Run the **Configure Social Auth** tool first to generate the lovable integration module
+Add new tool definitions to the existing tool-calling loop:
 
-## 2. Agentic AI Chatbot
+- **`add_holding`** — Add a stock/asset to user's portfolio (params: symbol, shares, cost_basis). Executes a Supabase insert using the service role key + user auth token.
+- **`remove_holding`** — Remove a holding by symbol.
+- **`add_to_watchlist`** — Add symbol to watchlist via Supabase insert.
+- **`remove_from_watchlist`** — Remove symbol from watchlist.
+- **`get_portfolio_summary`** — Returns the user's full portfolio from the `holdings` table.
+- **`get_chart_data`** — Fetches chart data for a symbol/range via Yahoo Finance.
+- **`compare_stocks`** — Fetches quotes for multiple symbols side-by-side.
+- **`get_trending`** — Fetches Yahoo Finance trending tickers.
 
-**Files:** `supabase/functions/ai-insights/index.ts`, `src/components/AiChatWidget.tsx`
+Changes: Accept an auth token from the client, validate it to get user_id, use Supabase client with service role to execute DB operations on behalf of the user. Increase tool-calling loop from 3 to 5 iterations.
 
-### Edge Function Changes
-- Add tool definitions to the AI model call for agentic capabilities:
-  - `get_portfolio_summary` — returns user's holdings summary
-  - `get_stock_quote` — fetches real-time quote for any symbol via Yahoo Finance
-  - `get_market_news` — fetches latest news for a topic/symbol
-  - `add_to_watchlist` — adds a symbol to user's watchlist (requires auth)
-  - `get_chart_data` — fetches chart data for a symbol
-- Implement a tool-calling loop: send messages → check for tool calls → execute tools → send results back → get final response
-- Stream the final text response back to the client
+### Widget (`src/components/AiChatWidget.tsx`)
 
-### Widget Changes
-- Add markdown rendering using `react-markdown` for rich AI responses (tables, lists, bold)
-- Show a "tools used" indicator when the AI executes operations
-- Add suggested quick actions: "Analyze my portfolio", "What's trending?", "Add AAPL to watchlist"
-- Increase chat window size slightly for better readability
+- Pass the user's auth token in the request so the edge function can execute DB operations.
+- Show tool execution indicators (e.g., "Adding AAPL to portfolio..." with a spinner).
+- Add more quick actions: "Add AAPL to my portfolio", "Remove TSLA from watchlist", "Compare AAPL vs MSFT".
+- After a tool execution that modifies data (add/remove holding), trigger a context refresh so the UI updates immediately.
+- Add a "clear chat" button in the header.
 
-## 3. Secure Third-Party API Key Management in Settings
+## 2. Improve All APIs and Search
 
-**Files:** `src/pages/SettingsPage.tsx`
+### Edge Functions
 
-- Replace the current mock "API Keys" tab with a **"Data Sources & API Keys"** section
-- Add a form to securely input API keys for:
-  - Alpha Vantage
-  - CoinGecko Pro
-  - NewsAPI
-  - Polygon.io
-  - Custom endpoints
-- Store API keys in the `user_settings` table (JSONB `settings` field) — keys are encrypted client-side before storage using a simple hashing display (show only last 4 chars)
-- Each key entry shows: provider name, masked key, status (connected/invalid), last tested timestamp
-- Add a "Test Connection" button per key that calls the respective API to validate
-- Show the existing "Connected Data Sources" section with real status based on stored keys
+**`market-search/index.ts`**:
+- Accept optional `type` filter param (already partially there but improve).
+- Return sector, industry, and exchange display name in results.
+- Handle edge cases for empty/short queries better.
 
-## 4. Screener Overhaul with Dynamic Dropdowns
+**`market-quotes/index.ts`**:
+- Already has retry logic and trending mode. Add a `screener` mode that accepts filters (type, exchange, performance) and returns matching symbols from Yahoo Finance screener API.
 
-**Files:** `src/pages/ScreenerPage.tsx`, `src/components/LiveSearchInput.tsx`
+**`market-news/index.ts`**:
+- Add `symbol` param for ticker-specific news.
+- Return image thumbnails when available.
 
-### Replace Static Filter Buttons with Smart Dropdowns
-- **TYPE**: Dropdown with categories: All, Stocks, ETFs, Mutual Funds, Crypto, Bonds, Commodities, Forex, Indices, ADRs, REITs — sourced from Yahoo Finance `quoteType` taxonomy
-- **COUNTRY/EXCHANGE**: Searchable dropdown listing 60+ exchanges fetched from a static comprehensive list (NYSE, NASDAQ, LSE, TSE, NSE Kenya, JSE, BSE India, KRX Korea, etc.) grouped by region
-- **PERFORMANCE**: Dropdown with: All, Top Gainers, Top Losers, Most Active, 52W High, 52W Low, High Dividend
-- **SECTOR**: New dropdown filter with all GICS sectors (Technology, Healthcare, Finance, Energy, etc.)
+### Search Components
 
-### Improved Search
-- Make the search bar more prominent with larger size
-- Add search result count and "Load more" pagination
-- Show richer result cards: price, change%, volume, market cap, sector
-- Add column sorting by clicking headers
-- Add infinite scroll or "Load 50 more" button for large result sets
+**`LiveSearchInput.tsx`**:
+- Accept `type` filter prop to narrow results (e.g., only crypto, only stocks).
+- Show price and change% inline in search results when available (fetch a quick quote batch for top results).
+- Increase max results from 20 to 30.
 
-## 5. Improve Real-Time Data APIs
+**`AddHoldingModal.tsx`**:
+- Pass the selected `assetType` as a `type` filter to `LiveSearchInput` so searching for "BTC" in crypto mode only shows crypto results.
+- Auto-detect country/exchange from the search result and update the country dropdown.
 
-**Files:** `supabase/functions/market-quotes/index.ts`, `supabase/functions/market-news/index.ts`, `supabase/functions/market-search/index.ts`
+**`ScreenerPage.tsx`**:
+- Make the search bar trigger live API search (currently it filters local `allAssets` only). Use `LiveSearchInput` logic to search globally when the local filter yields few results.
+- Add sort-by-column (click headers to sort by price, change%, name).
+- Add a "Fetch live quotes" button that batch-fetches current prices for displayed results.
 
-### Market Quotes
-- Increase default batch size from 20 to 50 symbols per request
-- Add retry logic with exponential backoff on Yahoo Finance failures
-- Return additional fields: volume, marketCap, pe ratio, dividend yield, 52W range
-- Add a `trending` endpoint mode that returns Yahoo's trending tickers
+## 3. Real-Time Data Everywhere
 
-### Market News
-- Add category filtering: general, business, technology, crypto, forex, earnings
-- Add symbol-specific news: pass `tickers` param to get news for specific holdings
-- Return more metadata: sentiment score (positive/negative/neutral based on title), read time
+**`RealtimeMarketContext.tsx`**:
+- Reduce polling interval from current value to 30 seconds for core symbols.
+- Add user's holdings symbols to the poll list automatically so portfolio values update live.
+- Add watchlist symbols to the poll list.
 
-### Market Search
-- Increase `quotesCount` from 20 to 40
-- Add result type filtering (only stocks, only crypto, etc.)
-- Return additional metadata: sector, industry, market cap range
+**`DashboardPage.tsx`**:
+- Replace the simulated `dayChg` calculation with actual live change data from `prices`.
+- Replace `genLine()` mock chart with real portfolio history (or at minimum, use real current values as the endpoint).
+- Market Movers section: if live data is available from `allAssets`, sort by `chgPct` to show real gainers/losers.
+
+**`MarketsPage.tsx`**:
+- Already uses live chart data. Ensure the heatmap tab refreshes on a timer (every 60s).
+- Market Watch tab: add auto-refresh indicator and countdown.
+
+**`WatchlistPage.tsx`**:
+- Show live sparkline prices using real data from `prices` context.
+
+## 4. Comprehensive README
+
+**`README.md`** — Complete rewrite documenting:
+
+- Project overview and vision (MEVEST wealth management platform)
+- Tech stack (React 18, Vite 5, Tailwind CSS, TypeScript, Lovable Cloud)
+- Architecture diagram (text-based)
+- File structure with descriptions of every major file:
+  - Pages (Dashboard, Portfolio, Markets, Screener, Watchlist, News, Analytics, Calendar, Settings, Auth)
+  - Components (AiChatWidget, AiInsightsPanel, LiveSearchInput, AddHoldingModal, Sidebar, Topbar)
+  - Contexts (Auth, Portfolio, Watchlist, RealtimeMarket, Theme)
+  - Edge Functions (ai-insights, market-search, market-quotes, market-chart, market-news)
+  - Data layer (market-data.ts, market.ts API client)
+- Features list (auth, portfolio management, live search, AI chatbot, real-time data, screener, news)
+- Database schema (profiles, holdings, watchlist_items, user_settings)
+- Deployment instructions
+- Environment variables reference
 
 ---
 
 ## Technical Details
 
-- Google OAuth uses Lovable Cloud's managed credentials — zero configuration needed
-- Agentic AI uses OpenAI-compatible tool-calling format via the Lovable AI gateway with `google/gemini-3-flash-preview`
-- API keys in settings are stored in Supabase `user_settings.settings` JSONB — only masked values displayed in UI
-- Screener dropdowns use Headless UI / custom select components with search built on top of existing shadcn/ui Select
-- All edge function improvements are backward-compatible
+- Agentic DB operations use the `SUPABASE_SERVICE_ROLE_KEY` secret (already available) with the user's JWT extracted from the request Authorization header to validate identity before executing.
+- Tool execution indicators use a `toolStatus` state in the widget that shows which tool is running.
+- The `type` filter for search is passed through to the `market-search` edge function which already has the `typeMap` filtering logic.
+- Real-time polling adds dynamic symbols (holdings + watchlist) to the core symbols list on each interval.
 
 ## File Summary
 
 | Action | File |
 |--------|------|
-| Edit | `src/pages/AuthPage.tsx` (add Google OAuth button) |
-| Edit | `supabase/functions/ai-insights/index.ts` (add tool-calling loop) |
-| Edit | `src/components/AiChatWidget.tsx` (markdown, quick actions, tool indicators) |
-| Edit | `src/pages/SettingsPage.tsx` (API key management UI) |
-| Edit | `src/pages/ScreenerPage.tsx` (dynamic dropdowns, improved search) |
-| Edit | `supabase/functions/market-quotes/index.ts` (more fields, retry, trending) |
-| Edit | `supabase/functions/market-news/index.ts` (categories, sentiment) |
-| Edit | `supabase/functions/market-search/index.ts` (more results, filtering) |
-| Tool | Configure Social Auth (for Google OAuth module) |
+| Edit | `supabase/functions/ai-insights/index.ts` (add 5+ new tools, auth handling) |
+| Edit | `src/components/AiChatWidget.tsx` (tool indicators, auth token, context refresh) |
+| Edit | `src/components/LiveSearchInput.tsx` (type filter, richer results) |
+| Edit | `src/components/AddHoldingModal.tsx` (pass type filter to search) |
+| Edit | `src/pages/ScreenerPage.tsx` (global search, column sorting) |
+| Edit | `src/pages/DashboardPage.tsx` (real data for movers, day change) |
+| Edit | `src/context/RealtimeMarketContext.tsx` (dynamic symbol polling) |
+| Edit | `supabase/functions/market-search/index.ts` (return richer metadata) |
+| Edit | `supabase/functions/market-news/index.ts` (ticker-specific news) |
+| Rewrite | `README.md` (comprehensive documentation) |
 
