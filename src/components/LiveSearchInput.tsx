@@ -11,6 +11,7 @@ interface LiveSearchInputProps {
   showDropdown?: boolean;
   autoFocus?: boolean;
   size?: 'sm' | 'md';
+  typeFilter?: string; // e.g. 'stock', 'crypto', 'etf'
 }
 
 export default function LiveSearchInput({
@@ -22,6 +23,7 @@ export default function LiveSearchInput({
   showDropdown = true,
   autoFocus = false,
   size = 'md',
+  typeFilter,
 }: LiveSearchInputProps) {
   const [query, setQuery] = useState(externalValue || '');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -44,15 +46,15 @@ export default function LiveSearchInput({
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await marketApi.search(query);
-        setResults(res.slice(0, 20));
+        const res = await marketApi.search(query, typeFilter);
+        setResults(res.slice(0, 30));
       } catch {
         setResults([]);
       }
       setLoading(false);
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query]);
+  }, [query, typeFilter]);
 
   const handleChange = (val: string) => {
     setQuery(val);
@@ -120,7 +122,10 @@ export default function LiveSearchInput({
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-foreground truncate">{r.symbol}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{r.name} · {r.exchange}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {r.name} · {r.exchange}
+                        {r.sector && ` · ${r.sector}`}
+                      </div>
                     </div>
                   </div>
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-secondary text-muted-foreground border border-border/50 uppercase flex-shrink-0 ml-2">

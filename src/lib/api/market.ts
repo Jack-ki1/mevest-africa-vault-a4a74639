@@ -49,10 +49,10 @@ export interface NewsItem {
 }
 
 export const marketApi = {
-  async search(query: string): Promise<SearchResult[]> {
+  async search(query: string, type?: string): Promise<SearchResult[]> {
     try {
       const { data, error } = await supabase.functions.invoke('market-search', {
-        body: { query },
+        body: { query, type },
       });
       if (error) throw error;
       return data?.results || [];
@@ -88,10 +88,10 @@ export const marketApi = {
     }
   },
 
-  async getNews(category = 'general'): Promise<{ trending: string[]; news: NewsItem[] }> {
+  async getNews(category = 'general', tickers?: string[]): Promise<{ trending: string[]; news: NewsItem[] }> {
     try {
       const { data, error } = await supabase.functions.invoke('market-news', {
-        body: { category },
+        body: { category, tickers },
       });
       if (error) throw error;
       return { trending: data?.trending || [], news: data?.news || [] };

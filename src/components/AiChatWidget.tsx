@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, User, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, Sparkles, Trash2, Wrench } from 'lucide-react';
 import { usePortfolio } from '@/context/PortfolioContext';
+import { useAuth } from '@/context/AuthContext';
 import ReactMarkdown from 'react-markdown';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
@@ -12,21 +13,32 @@ const QUICK_ACTIONS = [
   '📈 What\'s trending today?',
   '💡 Investment recommendations',
   '🔍 Look up a stock for me',
+  '➕ Add AAPL to my portfolio (10 shares at $190)',
+  '⚡ Compare AAPL vs MSFT vs GOOGL',
 ];
 
 export default function AiChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    { role: 'assistant', content: "Hi! I'm **MEVEST AI** — your agentic financial assistant. I can look up real-time stock quotes, search global markets, fetch news, and analyze your portfolio. Try asking me anything! 🚀" },
+    { role: 'assistant', content: "Hi! I'm **MEVEST AI** — your agentic financial assistant. I can look up real-time quotes, search global markets, fetch news, **add/remove holdings**, **manage your watchlist**, compare stocks, and analyze your portfolio. Try asking me anything! 🚀" },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { holdings } = usePortfolio();
+  const { session } = useAuth();
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
-  }, [messages]);
+  }, [messages, toolStatus]);
+
+  const clearChat = () => {
+    setMessages([
+      { role: 'assistant', content: "Chat cleared! How can I help you? 🚀" },
+    ]);
+    setToolStatus(null);
+  };
 
   const send = async (text?: string) => {
     const msgText = text || input.trim();
@@ -36,18 +48,26 @@ export default function AiChatWidget() {
     setMessages(allMsgs);
     setInput('');
     setLoading(true);
+    setToolStatus(null);
 
     let assistantSoFar = '';
 
     try {
       const portfolio = holdings.map(h => ({ symbol: h.sym, name: h.name, shares: h.shares, cost: h.cost, price: h.price, sector: h.sector }));
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      // Pass user's auth token for agentic DB operations
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else {
+        headers['Authorization'] = `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
+      }
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers,
         body: JSON.stringify({
           mode: 'chat',
           portfolio: portfolio.length > 0 ? portfolio : undefined,
@@ -106,10 +126,17 @@ export default function AiChatWidget() {
           } catch {}
         }
       }
+
+      // Check if any portfolio/watchlist changes happened — trigger reload
+      if (assistantSoFar.includes('Added') || assistantSoFar.includes('Removed') || assistantSoFar.includes('portfolio') || assistantSoFar.includes('watchlist')) {
+        // Dispatch a custom event to trigger context refreshes
+        window.dispatchEvent(new CustomEvent('mevest-data-changed'));
+      }
     } catch (e: any) {
       setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${e.message || 'Something went wrong. Please try again.'}` }]);
     } finally {
       setLoading(false);
+      setToolStatus(null);
     }
   };
 
@@ -123,7 +150,7 @@ export default function AiChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-[380px] h-[520px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed bottom-5 right-5 z-50 w-[400px] h-[560px] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-2">
@@ -135,7 +162,14 @@ export default function AiChatWidget() {
             <span className="ml-2 text-[8px] bg-primary/15 text-primary px-1.5 py-0.5 rounded font-bold">AGENTIC</span>
           </div>
         </div>
-        <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+        <div className="flex items-center gap-1">
+          <button onClick={clearChat} className="text-muted-foreground hover:text-foreground p-1" title="Clear chat">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+          <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
@@ -155,11 +189,15 @@ export default function AiChatWidget() {
             {m.role === 'user' && <User className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />}
           </div>
         ))}
-        {loading && !messages[messages.length - 1]?.content && (
+        {loading && (
           <div className="flex gap-2">
             <Bot className="w-5 h-5 text-primary flex-shrink-0" />
             <div className="bg-secondary rounded-xl px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
-              <Sparkles className="w-3 h-3 animate-pulse" /> Thinking...
+              {toolStatus ? (
+                <><Wrench className="w-3 h-3 animate-pulse text-primary" /> {toolStatus}</>
+              ) : (
+                <><Sparkles className="w-3 h-3 animate-pulse" /> Thinking...</>
+              )}
             </div>
           </div>
         )}
@@ -180,7 +218,7 @@ export default function AiChatWidget() {
       <div className="border-t border-border p-2">
         <div className="flex gap-2">
           <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
-            placeholder="Ask about stocks, markets, portfolio..."
+            placeholder="Ask about stocks, add holdings, manage watchlist..."
             className="flex-1 bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-foreground outline-none focus:border-primary" />
           <button onClick={() => send()} disabled={loading || !input.trim()} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50">
             <Send className="w-3.5 h-3.5" />
