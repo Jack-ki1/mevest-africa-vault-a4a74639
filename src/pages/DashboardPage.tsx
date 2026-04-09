@@ -26,13 +26,17 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   const totalVal = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.price, 0) : 0;
   const totalCost = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.cost, 0) : 0;
   const totalPL = totalVal - totalCost;
-  const dayChg = totalVal * 0.0065;
+  const dayChg = n ? enrichedHoldings.reduce((s, h) => {
+    const p = prices[h.sym];
+    return s + (p ? p.chg * h.shares : 0);
+  }, 0) : 0;
+  const dayChgPct = totalVal > 0 ? (dayChg / totalVal * 100) : 0;
 
   const stats = [
-    { label: 'Portfolio Value', val: n ? formatMoney(totalVal) : null, chg: n ? '+0.65%' : null, up: true },
+    { label: 'Portfolio Value', val: n ? formatMoney(totalVal) : null, chg: n ? formatPct(dayChgPct) : null, up: dayChgPct >= 0 },
     { label: 'Total Invested', val: n ? formatMoney(totalCost) : null, chg: 'Cost basis', up: true },
     { label: 'Total P&L', val: n ? formatMoney(totalPL) : null, chg: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
-    { label: "Today's P&L", val: n ? formatMoney(dayChg) : null, chg: n ? '+0.65%' : null, up: true },
+    { label: "Today's P&L", val: n ? formatMoney(dayChg) : null, chg: n ? formatPct(dayChgPct) : null, up: dayChgPct >= 0 },
   ];
 
   const selectedDays = TIMEFRAMES.find(t => t.key === timeframe)?.days || 90;
