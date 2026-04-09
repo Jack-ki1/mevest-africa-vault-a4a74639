@@ -170,6 +170,7 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
                 size="sm"
                 value={form.symbol}
                 onValueChange={val => update('symbol', val)}
+                typeFilter={assetType === 'etf' ? 'etf' : assetType === 'commodity' ? 'commodity' : 'stock'}
               />
               {errors.symbol && <span className="text-[10px] text-destructive mt-0.5 block">{errors.symbol}</span>}
             </div>
@@ -224,6 +225,7 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
                 size="sm"
                 value={form.symbol}
                 onValueChange={val => update('symbol', val)}
+                typeFilter="crypto"
               />
               {errors.symbol && <span className="text-[10px] text-destructive mt-0.5 block">{errors.symbol}</span>}
             </div>
