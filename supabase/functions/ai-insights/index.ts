@@ -1,9 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS — restrict to allowed origins via env (ALLOWED_ORIGINS=comma-separated). Falls back to '*' only when not configured.
+const ALLOWED = (Deno.env.get('ALLOWED_ORIGINS') || '*')
+  .split(',').map(s => s.trim()).filter(Boolean);
+function buildCors(origin: string | null) {
+  const allowAll = ALLOWED.includes('*');
+  const allowed = allowAll || (origin && ALLOWED.includes(origin));
+  return {
+    'Access-Control-Allow-Origin': allowAll ? '*' : (allowed ? origin! : ALLOWED[0] || ''),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  } as Record<string, string>;
+}
+
+// Validation helpers — reject hallucinated/garbage tool args before any DB write.
+function validSymbol(s: any): boolean {
+  return typeof s === 'string' && /^[A-Z0-9.\-^=]{1,20}$/.test(s.toUpperCase());
+}
+function validatePositiveNum(v: any, max = 1e12): boolean {
+  return typeof v === 'number' && isFinite(v) && v > 0 && v <= max;
+}
 
 const tools = [
   {
