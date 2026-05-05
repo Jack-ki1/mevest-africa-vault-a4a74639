@@ -270,17 +270,20 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
         </div>
 
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-[15px] py-3 border-b border-border"><span className="font-display text-[13px] font-bold">Risk Metrics</span></div>
+          <div className="px-[15px] py-3 border-b border-border flex items-center"><span className="font-display text-[13px] font-bold">Risk Metrics</span><span className="ml-auto text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Coming Soon</span></div>
           <div className="p-3.5">
             {n === 0 ? <EmptyState icon="📐" title="Risk metrics" sub="Add holdings to compute Sharpe, Beta, drawdown and more." /> : (
-              <div className="grid grid-cols-3 gap-[9px]">
-                {riskMetrics.map(m => (
-                  <div key={m.l} className="p-[9px] bg-secondary/50 rounded-lg border border-border/30">
-                    <div className="text-[9px] text-muted-foreground font-semibold uppercase tracking-[0.4px]">{m.l}</div>
-                    <div className={`font-mono text-[15px] font-semibold mt-[3px] tabular-nums ${m.c}`}>{m.v}</div>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="text-[10px] text-muted-foreground mb-2">Risk analytics require historical data we are still collecting.</div>
+                <div className="grid grid-cols-3 gap-[9px]">
+                  {riskMetrics.map(m => (
+                    <div key={m.l} className="p-[9px] bg-secondary/50 rounded-lg border border-border/30">
+                      <div className="text-[9px] text-muted-foreground font-semibold uppercase tracking-[0.4px]">{m.l}</div>
+                      <div className={`font-mono text-[15px] font-semibold mt-[3px] tabular-nums ${m.c}`}>{m.v}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>
