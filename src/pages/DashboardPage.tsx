@@ -40,14 +40,13 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   ];
 
   const selectedDays = TIMEFRAMES.find(t => t.key === timeframe)?.days || 90;
+  // NOTE: Real portfolio history requires a portfolio_snapshots table populated by
+  // a daily cron — until that exists we anchor the chart on the current real value
+  // and only plot a single live point. No fabricated random walk.
   const perfData = useMemo(() => {
     if (!n) return [];
-    const data = genLine(totalVal * 0.88, selectedDays, 0.003);
     const now = new Date();
-    return data.map((v, i) => {
-      const d = new Date(now); d.setDate(d.getDate() - (selectedDays - i));
-      return { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: v };
-    });
+    return [{ date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: totalVal }];
   }, [n, totalVal, selectedDays]);
 
   const allocData = useMemo(() => {
@@ -63,11 +62,13 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   const gainers = [...liveAssets].sort((a, b) => b.chgPct - a.chgPct).slice(0, 5);
   const losers = [...liveAssets].sort((a, b) => a.chgPct - b.chgPct).slice(0, 5);
 
+  // Risk metrics intentionally show "—" until we compute them from real history.
   const riskMetrics = [
-    { l: 'Sharpe', v: '1.84', c: 'text-primary' }, { l: 'Beta', v: '0.87', c: 'text-primary' },
-    { l: 'Volatility', v: '14.2%', c: 'text-amber' }, { l: 'Max DD', v: '-18.4%', c: 'text-destructive' },
-    { l: 'CAGR', v: '19.9%', c: 'text-primary' }, { l: 'TWR', v: '+32.1%', c: 'text-primary' },
+    { l: 'Sharpe', v: '—', c: 'text-muted-foreground' }, { l: 'Beta', v: '—', c: 'text-muted-foreground' },
+    { l: 'Volatility', v: '—', c: 'text-muted-foreground' }, { l: 'Max DD', v: '—', c: 'text-muted-foreground' },
+    { l: 'CAGR', v: '—', c: 'text-muted-foreground' }, { l: 'TWR', v: '—', c: 'text-muted-foreground' },
   ];
+
 
   const fg = FEAR_GREED;
   const fgColor = fg.value > 70 ? 'text-primary' : fg.value > 40 ? 'text-amber' : 'text-destructive';
