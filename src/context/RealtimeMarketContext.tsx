@@ -107,28 +107,11 @@ export function RealtimeMarketProvider({ children }: { children: React.ReactNode
     return () => clearInterval(interval);
   }, [fetchLiveQuotes]);
 
-  // Simulate micro-movements between live fetches (every 2s)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSimulatedPrices(prev => {
-        const next = { ...prev };
-        const syms = Object.keys(next);
-        const updateCount = Math.ceil(syms.length * 0.3);
-        const shuffled = [...syms].sort(() => Math.random() - 0.5).slice(0, updateCount);
-        shuffled.forEach(sym => {
-          const current = next[sym];
-          const isCrypto = sym.includes('USD') || sym.includes('BTC') || sym.includes('ETH') || sym.includes('SOL');
-          const volatility = isCrypto ? 0.002 : 0.0008;
-          const move = (Math.random() - 0.5) * 2 * volatility;
-          const newPrice = +(current.price * (1 + move)).toFixed(current.price < 1 ? 6 : current.price < 10 ? 4 : 2);
-          next[sym] = { ...current, price: newPrice, prevPrice: current.price };
-        });
-        return next;
-      });
-      if (!isLive) setLastUpdate(Date.now());
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isLive]);
+  // NOTE: A previous implementation simulated micro price movements every 2s
+  // by calling setState on a large dictionary, which forced every consumer of
+  // useRealtimeMarket() to re-render every 2 seconds — a major mobile perf hit.
+  // Removed entirely. Live prices are refreshed every 30s from the real API.
+
 
   // Build unified price map: live data takes priority over simulation
   const prices = React.useMemo(() => {
