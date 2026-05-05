@@ -34,11 +34,18 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
   const geoTotal = Object.values(geos).reduce((a, b) => a + b, 0);
   const geoColors: Record<string, string> = { US: 'hsl(218 90% 66%)', Global: 'hsl(38 95% 55%)', KE: 'hsl(160 60% 52%)', UK: 'hsl(258 89% 76%)', EU: 'hsl(38 95% 55%)' };
 
+  // Today's P&L from live prices: sum(shares * change)
+  const dayChg = enrichedHoldings.reduce((s, h) => {
+    const p = prices[h.sym];
+    return s + (p ? p.chg * h.shares : 0);
+  }, 0);
+  const dayPct = totalVal > 0 ? (dayChg / totalVal) * 100 : 0;
+
   const stats = [
-    { l: 'Portfolio Value', v: n ? formatMoney(totalVal) : null, c: '+0.65%', up: true },
+    { l: 'Portfolio Value', v: n ? formatMoney(totalVal) : null, c: n ? formatPct(dayPct) : null, up: dayPct >= 0 },
     { l: 'Total Invested', v: n ? formatMoney(totalCost) : null, c: 'Cost basis', up: true },
     { l: 'Total P&L', v: n ? formatMoney(totalPL) : null, c: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
-    { l: "Today's P&L", v: n ? formatMoney(totalVal * 0.0065) : null, c: '+0.65%', up: true },
+    { l: "Today's P&L", v: n ? formatMoney(dayChg) : null, c: n ? formatPct(dayPct) : null, up: dayChg >= 0 },
   ];
 
   const exportCSV = () => {
