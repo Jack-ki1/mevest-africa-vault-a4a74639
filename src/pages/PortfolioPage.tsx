@@ -178,7 +178,7 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
                   <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => v + '%'} />
                   <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.15)', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} formatter={(v: number) => [(v > 0 ? '+' : '') + v.toFixed(2) + '%']} />
-                  <Bar dataKey="pct" radius={4}>{attrData.map((d, i) => <rect key={i} fill={d.pct >= 0 ? 'hsl(160 60% 52% / 0.5)' : 'hsl(0 76% 58% / 0.5)'} />)}</Bar>
+                  <Bar dataKey="pct" radius={4}>{attrData.map((d, i) => <Cell key={i} fill={d.pct >= 0 ? 'hsl(160 60% 52% / 0.5)' : 'hsl(0 76% 58% / 0.5)'} />)}</Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
