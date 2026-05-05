@@ -113,15 +113,20 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
           </div>
           <div className="p-3.5">
             {n === 0 ? <EmptyState icon="📊" title="No portfolio data yet" sub="Add your first holding to see performance charts and analytics." onAdd={onAddHolding} /> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={perfData}>
-                  <defs><linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(160 60% 52%)" stopOpacity={0.15} /><stop offset="100%" stopColor="hsl(160 60% 52%)" stopOpacity={0} /></linearGradient></defs>
-                  <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} interval={Math.floor(selectedDays / 6)} />
-                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => '$' + Math.round(v).toLocaleString()} width={60} />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.15)', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} formatter={(v: number) => ['$' + Math.round(v).toLocaleString(), 'Value']} />
-                  <Area type="monotone" dataKey="value" stroke="hsl(160 60% 52%)" fill="url(#perfGrad)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="space-y-2">
+                <div className="text-[10px] text-amber bg-amber/10 border border-amber/20 rounded-md px-2 py-1.5">
+                  ⚠️ Historical performance tracking is coming soon. Showing current portfolio value only.
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={perfData}>
+                    <defs><linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(160 60% 52%)" stopOpacity={0.15} /><stop offset="100%" stopColor="hsl(160 60% 52%)" stopOpacity={0} /></linearGradient></defs>
+                    <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => '$' + Math.round(v).toLocaleString()} width={60} />
+                    <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.15)', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} formatter={(v: number) => ['$' + Math.round(v).toLocaleString(), 'Value']} />
+                    <Area type="monotone" dataKey="value" stroke="hsl(160 60% 52%)" fill="url(#perfGrad)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
