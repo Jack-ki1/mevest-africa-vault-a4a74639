@@ -3,7 +3,7 @@ import { usePortfolio } from '@/context/PortfolioContext';
 import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { formatMoney, formatPct } from '@/data/market-data';
 import { toast } from '@/hooks/use-toast';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Zap } from 'lucide-react';
 
 const TABS = ['all', 'stock', 'cryptocurrency', 'etf', 'bond'];
