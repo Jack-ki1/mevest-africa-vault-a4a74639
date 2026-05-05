@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
-import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct, genLine } from '@/data/market-data';
+import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct } from '@/data/market-data';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
