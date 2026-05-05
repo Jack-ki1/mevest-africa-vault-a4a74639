@@ -223,7 +223,7 @@ export default function SettingsPage() {
             <div>
               <div className="font-display text-[13px] font-bold mb-3">Reports</div>
               <div className="space-y-[7px]">
-                {(['weeklyReport', 'Weekly Portfolio Summary'] as const, [
+                {([
                   ['weeklyReport', 'Weekly Portfolio Summary'],
                   ['monthlyReport', 'Monthly Performance Report'],
                 ] as const).map(([key, label]) => (

@@ -3,7 +3,7 @@ import { usePortfolio } from '@/context/PortfolioContext';
 import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { formatMoney, formatPct } from '@/data/market-data';
 import { toast } from '@/hooks/use-toast';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Zap } from 'lucide-react';
 
 const TABS = ['all', 'stock', 'cryptocurrency', 'etf', 'bond'];
@@ -34,11 +34,18 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
   const geoTotal = Object.values(geos).reduce((a, b) => a + b, 0);
   const geoColors: Record<string, string> = { US: 'hsl(218 90% 66%)', Global: 'hsl(38 95% 55%)', KE: 'hsl(160 60% 52%)', UK: 'hsl(258 89% 76%)', EU: 'hsl(38 95% 55%)' };
 
+  // Today's P&L from live prices: sum(shares * change)
+  const dayChg = enrichedHoldings.reduce((s, h) => {
+    const p = prices[h.sym];
+    return s + (p ? p.chg * h.shares : 0);
+  }, 0);
+  const dayPct = totalVal > 0 ? (dayChg / totalVal) * 100 : 0;
+
   const stats = [
-    { l: 'Portfolio Value', v: n ? formatMoney(totalVal) : null, c: '+0.65%', up: true },
+    { l: 'Portfolio Value', v: n ? formatMoney(totalVal) : null, c: n ? formatPct(dayPct) : null, up: dayPct >= 0 },
     { l: 'Total Invested', v: n ? formatMoney(totalCost) : null, c: 'Cost basis', up: true },
     { l: 'Total P&L', v: n ? formatMoney(totalPL) : null, c: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
-    { l: "Today's P&L", v: n ? formatMoney(totalVal * 0.0065) : null, c: '+0.65%', up: true },
+    { l: "Today's P&L", v: n ? formatMoney(dayChg) : null, c: n ? formatPct(dayPct) : null, up: dayChg >= 0 },
   ];
 
   const exportCSV = () => {
@@ -171,7 +178,7 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
                   <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => v + '%'} />
                   <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.15)', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} formatter={(v: number) => [(v > 0 ? '+' : '') + v.toFixed(2) + '%']} />
-                  <Bar dataKey="pct" radius={4}>{attrData.map((d, i) => <rect key={i} fill={d.pct >= 0 ? 'hsl(160 60% 52% / 0.5)' : 'hsl(0 76% 58% / 0.5)'} />)}</Bar>
+                  <Bar dataKey="pct" radius={4}>{attrData.map((d, i) => <Cell key={i} fill={d.pct >= 0 ? 'hsl(160 60% 52% / 0.5)' : 'hsl(0 76% 58% / 0.5)'} />)}</Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}

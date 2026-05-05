@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
-import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct, genLine } from '@/data/market-data';
+import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct } from '@/data/market-data';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
@@ -40,14 +40,13 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   ];
 
   const selectedDays = TIMEFRAMES.find(t => t.key === timeframe)?.days || 90;
+  // NOTE: Real portfolio history requires a portfolio_snapshots table populated by
+  // a daily cron — until that exists we anchor the chart on the current real value
+  // and only plot a single live point. No fabricated random walk.
   const perfData = useMemo(() => {
     if (!n) return [];
-    const data = genLine(totalVal * 0.88, selectedDays, 0.003);
     const now = new Date();
-    return data.map((v, i) => {
-      const d = new Date(now); d.setDate(d.getDate() - (selectedDays - i));
-      return { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: v };
-    });
+    return [{ date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: totalVal }];
   }, [n, totalVal, selectedDays]);
 
   const allocData = useMemo(() => {
@@ -63,11 +62,13 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   const gainers = [...liveAssets].sort((a, b) => b.chgPct - a.chgPct).slice(0, 5);
   const losers = [...liveAssets].sort((a, b) => a.chgPct - b.chgPct).slice(0, 5);
 
+  // Risk metrics intentionally show "—" until we compute them from real history.
   const riskMetrics = [
-    { l: 'Sharpe', v: '1.84', c: 'text-primary' }, { l: 'Beta', v: '0.87', c: 'text-primary' },
-    { l: 'Volatility', v: '14.2%', c: 'text-amber' }, { l: 'Max DD', v: '-18.4%', c: 'text-destructive' },
-    { l: 'CAGR', v: '19.9%', c: 'text-primary' }, { l: 'TWR', v: '+32.1%', c: 'text-primary' },
+    { l: 'Sharpe', v: '—', c: 'text-muted-foreground' }, { l: 'Beta', v: '—', c: 'text-muted-foreground' },
+    { l: 'Volatility', v: '—', c: 'text-muted-foreground' }, { l: 'Max DD', v: '—', c: 'text-muted-foreground' },
+    { l: 'CAGR', v: '—', c: 'text-muted-foreground' }, { l: 'TWR', v: '—', c: 'text-muted-foreground' },
   ];
+
 
   const fg = FEAR_GREED;
   const fgColor = fg.value > 70 ? 'text-primary' : fg.value > 40 ? 'text-amber' : 'text-destructive';
@@ -112,15 +113,20 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
           </div>
           <div className="p-3.5">
             {n === 0 ? <EmptyState icon="📊" title="No portfolio data yet" sub="Add your first holding to see performance charts and analytics." onAdd={onAddHolding} /> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={perfData}>
-                  <defs><linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(160 60% 52%)" stopOpacity={0.15} /><stop offset="100%" stopColor="hsl(160 60% 52%)" stopOpacity={0} /></linearGradient></defs>
-                  <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} interval={Math.floor(selectedDays / 6)} />
-                  <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => '$' + Math.round(v).toLocaleString()} width={60} />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.15)', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} formatter={(v: number) => ['$' + Math.round(v).toLocaleString(), 'Value']} />
-                  <Area type="monotone" dataKey="value" stroke="hsl(160 60% 52%)" fill="url(#perfGrad)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="space-y-2">
+                <div className="text-[10px] text-amber bg-amber/10 border border-amber/20 rounded-md px-2 py-1.5">
+                  ⚠️ Historical performance tracking is coming soon. Showing current portfolio value only.
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={perfData}>
+                    <defs><linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(160 60% 52%)" stopOpacity={0.15} /><stop offset="100%" stopColor="hsl(160 60% 52%)" stopOpacity={0} /></linearGradient></defs>
+                    <XAxis dataKey="date" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={v => '$' + Math.round(v).toLocaleString()} width={60} />
+                    <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border) / 0.15)', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }} formatter={(v: number) => ['$' + Math.round(v).toLocaleString(), 'Value']} />
+                    <Area type="monotone" dataKey="value" stroke="hsl(160 60% 52%)" fill="url(#perfGrad)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </div>
         </div>
@@ -264,17 +270,20 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
         </div>
 
         <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-[15px] py-3 border-b border-border"><span className="font-display text-[13px] font-bold">Risk Metrics</span></div>
+          <div className="px-[15px] py-3 border-b border-border flex items-center"><span className="font-display text-[13px] font-bold">Risk Metrics</span><span className="ml-auto text-[9px] text-muted-foreground font-semibold uppercase tracking-wider">Coming Soon</span></div>
           <div className="p-3.5">
             {n === 0 ? <EmptyState icon="📐" title="Risk metrics" sub="Add holdings to compute Sharpe, Beta, drawdown and more." /> : (
-              <div className="grid grid-cols-3 gap-[9px]">
-                {riskMetrics.map(m => (
-                  <div key={m.l} className="p-[9px] bg-secondary/50 rounded-lg border border-border/30">
-                    <div className="text-[9px] text-muted-foreground font-semibold uppercase tracking-[0.4px]">{m.l}</div>
-                    <div className={`font-mono text-[15px] font-semibold mt-[3px] tabular-nums ${m.c}`}>{m.v}</div>
-                  </div>
-                ))}
-              </div>
+              <>
+                <div className="text-[10px] text-muted-foreground mb-2">Risk analytics require historical data we are still collecting.</div>
+                <div className="grid grid-cols-3 gap-[9px]">
+                  {riskMetrics.map(m => (
+                    <div key={m.l} className="p-[9px] bg-secondary/50 rounded-lg border border-border/30">
+                      <div className="text-[9px] text-muted-foreground font-semibold uppercase tracking-[0.4px]">{m.l}</div>
+                      <div className={`font-mono text-[15px] font-semibold mt-[3px] tabular-nums ${m.c}`}>{m.v}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

@@ -1,9 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS — restrict to allowed origins via env (ALLOWED_ORIGINS=comma-separated). Falls back to '*' only when not configured.
+const ALLOWED = (Deno.env.get('ALLOWED_ORIGINS') || '*')
+  .split(',').map(s => s.trim()).filter(Boolean);
+function buildCors(origin: string | null) {
+  const allowAll = ALLOWED.includes('*');
+  const allowed = allowAll || (origin && ALLOWED.includes(origin));
+  return {
+    'Access-Control-Allow-Origin': allowAll ? '*' : (allowed ? origin! : ALLOWED[0] || ''),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  } as Record<string, string>;
+}
+
+// Validation helpers — reject hallucinated/garbage tool args before any DB write.
+function validSymbol(s: any): boolean {
+  return typeof s === 'string' && /^[A-Z0-9.\-^=]{1,20}$/.test(s.toUpperCase());
+}
+function validatePositiveNum(v: any, max = 1e12): boolean {
+  return typeof v === 'number' && isFinite(v) && v > 0 && v <= max;
+}
 
 const tools = [
   {
@@ -141,19 +157,19 @@ const tools = [
   },
 ];
 
-// Helper: get user ID from auth token
+// Helper: get user ID from auth token — uses the correct supabase-js v2 API.
 async function getUserId(authHeader: string | null): Promise<string | null> {
   if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.replace('Bearer ', '').trim();
+  if (!token) return null;
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
     );
-    const token = authHeader.replace('Bearer ', '');
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims) return null;
-    return data.claims.sub as string;
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) return null;
+    return data.user.id;
   } catch {
     return null;
   }
@@ -212,14 +228,20 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'add_holding') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
+      if (!validatePositiveNum(args.shares, 1e9)) return JSON.stringify({ error: 'Shares must be a positive number' });
+      if (!validatePositiveNum(args.cost_basis)) return JSON.stringify({ error: 'Cost basis must be a positive number' });
+      if (typeof args.name !== 'string' || args.name.length === 0 || args.name.length > 200) return JSON.stringify({ error: 'Invalid name' });
+      const allowedTypes = ['stock', 'cryptocurrency', 'etf', 'bond', 'commodity'];
+      const type = allowedTypes.includes(args.type) ? args.type : 'stock';
       const db = getServiceClient();
       const { error } = await db.from('holdings').insert({
         user_id: userId,
         symbol: args.symbol.toUpperCase(),
-        name: args.name,
+        name: args.name.slice(0, 200),
         shares: args.shares,
         cost_basis: args.cost_basis,
-        type: args.type || 'stock',
+        type,
         country: 'US',
       });
       if (error) return JSON.stringify({ error: `Failed to add holding: ${error.message}` });
@@ -228,6 +250,7 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'remove_holding') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
       const db = getServiceClient();
       const { error } = await db.from('holdings').delete().eq('user_id', userId).eq('symbol', args.symbol.toUpperCase());
       if (error) return JSON.stringify({ error: `Failed to remove: ${error.message}` });
@@ -236,6 +259,7 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'add_to_watchlist') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
       const db = getServiceClient();
       const { error } = await db.from('watchlist_items').upsert({ user_id: userId, symbol: args.symbol.toUpperCase() }, { onConflict: 'user_id,symbol' });
       if (error) return JSON.stringify({ error: `Failed to add to watchlist: ${error.message}` });
@@ -244,11 +268,13 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'remove_from_watchlist') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
       const db = getServiceClient();
       const { error } = await db.from('watchlist_items').delete().eq('user_id', userId).eq('symbol', args.symbol.toUpperCase());
       if (error) return JSON.stringify({ error: `Failed to remove from watchlist: ${error.message}` });
       return JSON.stringify({ success: true, message: `Removed ${args.symbol} from watchlist.`, action: 'watchlist_changed' });
     }
+
 
     if (name === 'get_portfolio_summary') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
@@ -341,7 +367,22 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
   }
 }
 
+// In-memory sliding-window rate limiter (per user/IP). Per-instance only.
+const RL_WINDOW_MS = 60_000;
+const RL_MAX = 20; // 20 requests / minute / subject
+const rlMap = new Map<string, number[]>();
+function rateLimited(key: string): boolean {
+  const now = Date.now();
+  const arr = (rlMap.get(key) || []).filter(t => now - t < RL_WINDOW_MS);
+  arr.push(now);
+  rlMap.set(key, arr);
+  return arr.length > RL_MAX;
+}
+
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = buildCors(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -357,7 +398,17 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     const userId = await getUserId(authHeader);
 
+    // Rate limit by userId when present, else by IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rlKey = userId || `ip:${ip}`;
+    if (rateLimited(rlKey)) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please slow down.' }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { mode, portfolio, messages, question } = await req.json();
+
 
     const systemPrompt = `You are MEVEST AI, an expert agentic financial assistant embedded in the MEVEST wealth management platform.
 
