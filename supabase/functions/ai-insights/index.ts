@@ -228,14 +228,20 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'add_holding') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
+      if (!validatePositiveNum(args.shares, 1e9)) return JSON.stringify({ error: 'Shares must be a positive number' });
+      if (!validatePositiveNum(args.cost_basis)) return JSON.stringify({ error: 'Cost basis must be a positive number' });
+      if (typeof args.name !== 'string' || args.name.length === 0 || args.name.length > 200) return JSON.stringify({ error: 'Invalid name' });
+      const allowedTypes = ['stock', 'cryptocurrency', 'etf', 'bond', 'commodity'];
+      const type = allowedTypes.includes(args.type) ? args.type : 'stock';
       const db = getServiceClient();
       const { error } = await db.from('holdings').insert({
         user_id: userId,
         symbol: args.symbol.toUpperCase(),
-        name: args.name,
+        name: args.name.slice(0, 200),
         shares: args.shares,
         cost_basis: args.cost_basis,
-        type: args.type || 'stock',
+        type,
         country: 'US',
       });
       if (error) return JSON.stringify({ error: `Failed to add holding: ${error.message}` });
@@ -244,6 +250,7 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'remove_holding') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
       const db = getServiceClient();
       const { error } = await db.from('holdings').delete().eq('user_id', userId).eq('symbol', args.symbol.toUpperCase());
       if (error) return JSON.stringify({ error: `Failed to remove: ${error.message}` });
@@ -252,6 +259,7 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'add_to_watchlist') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
       const db = getServiceClient();
       const { error } = await db.from('watchlist_items').upsert({ user_id: userId, symbol: args.symbol.toUpperCase() }, { onConflict: 'user_id,symbol' });
       if (error) return JSON.stringify({ error: `Failed to add to watchlist: ${error.message}` });
@@ -260,11 +268,13 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
 
     if (name === 'remove_from_watchlist') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
+      if (!validSymbol(args.symbol)) return JSON.stringify({ error: 'Invalid symbol format' });
       const db = getServiceClient();
       const { error } = await db.from('watchlist_items').delete().eq('user_id', userId).eq('symbol', args.symbol.toUpperCase());
       if (error) return JSON.stringify({ error: `Failed to remove from watchlist: ${error.message}` });
       return JSON.stringify({ success: true, message: `Removed ${args.symbol} from watchlist.`, action: 'watchlist_changed' });
     }
+
 
     if (name === 'get_portfolio_summary') {
       if (!userId) return JSON.stringify({ error: 'User not authenticated. Please log in first.' });
