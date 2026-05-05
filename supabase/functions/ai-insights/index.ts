@@ -367,7 +367,22 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
   }
 }
 
+// In-memory sliding-window rate limiter (per user/IP). Per-instance only.
+const RL_WINDOW_MS = 60_000;
+const RL_MAX = 20; // 20 requests / minute / subject
+const rlMap = new Map<string, number[]>();
+function rateLimited(key: string): boolean {
+  const now = Date.now();
+  const arr = (rlMap.get(key) || []).filter(t => now - t < RL_WINDOW_MS);
+  arr.push(now);
+  rlMap.set(key, arr);
+  return arr.length > RL_MAX;
+}
+
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = buildCors(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -383,7 +398,17 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     const userId = await getUserId(authHeader);
 
+    // Rate limit by userId when present, else by IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rlKey = userId || `ip:${ip}`;
+    if (rateLimited(rlKey)) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please slow down.' }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { mode, portfolio, messages, question } = await req.json();
+
 
     const systemPrompt = `You are MEVEST AI, an expert agentic financial assistant embedded in the MEVEST wealth management platform.
 
