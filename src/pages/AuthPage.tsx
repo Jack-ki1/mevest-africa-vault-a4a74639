@@ -5,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, TrendingUp } from 'lucide-react';
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resendConfirmation, resetPassword } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,16 +13,15 @@ export default function AuthPage() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [authHint, setAuthHint] = useState<'verify' | 'reset' | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setAuthHint(null);
 
     if (mode === 'forgot') {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+      const { error } = await resetPassword(email);
       setLoading(false);
       if (error) {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -45,8 +44,26 @@ export default function AuthPage() {
       const { error } = await signIn(email, password);
       setLoading(false);
       if (error) {
+        const message = error.message || 'Please check your email and password.';
+        if (/confirm|verify|verified|email/i.test(message)) setAuthHint('verify');
+        if (/invalid login credentials|credentials/i.test(message)) setAuthHint('reset');
         toast({ title: 'Login failed', description: error.message, variant: 'destructive' });
       }
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      toast({ title: 'Email required', description: 'Enter your email address first.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    const { error } = await resendConfirmation(email);
+    setLoading(false);
+    if (error) {
+      toast({ title: 'Could not resend email', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Check your email', description: 'A fresh verification link has been sent.' });
     }
   };
 
@@ -141,9 +158,22 @@ export default function AuthPage() {
             )}
 
             {mode === 'login' && (
-              <button type="button" onClick={() => setMode('forgot')} className="text-xs text-primary hover:underline">
-                Forgot password?
-              </button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button type="button" onClick={() => setMode('forgot')} className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </button>
+                <button type="button" onClick={handleResendConfirmation} disabled={loading} className="text-xs text-primary hover:underline disabled:opacity-50">
+                  Resend verification email
+                </button>
+              </div>
+            )}
+
+            {mode === 'login' && authHint && (
+              <div className="rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
+                {authHint === 'verify'
+                  ? 'Your email may still need verification. Resend the verification email, then sign in again.'
+                  : 'If your account exists but the password is not working, reset it using the link above.'}
+              </div>
             )}
 
             <button type="submit" disabled={loading}
