@@ -8,9 +8,9 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Check for recovery token in hash
     const hash = window.location.hash;
-    if (hash.includes('type=recovery')) {
+    const search = window.location.search;
+    if (hash.includes('type=recovery') || search.includes('type=recovery') || hash.includes('access_token=')) {
       setReady(true);
     }
   }, []);
