@@ -50,6 +50,84 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_snapshots: {
+        Row: {
+          cash_balance: number
+          cost_basis: number
+          created_at: string
+          currency: string
+          holdings_json: Json | null
+          id: string
+          snapshot_date: string
+          total_value: number
+          user_id: string
+        }
+        Insert: {
+          cash_balance?: number
+          cost_basis?: number
+          created_at?: string
+          currency?: string
+          holdings_json?: Json | null
+          id?: string
+          snapshot_date?: string
+          total_value?: number
+          user_id: string
+        }
+        Update: {
+          cash_balance?: number
+          cost_basis?: number
+          created_at?: string
+          currency?: string
+          holdings_json?: Json | null
+          id?: string
+          snapshot_date?: string
+          total_value?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      portfolio_transactions: {
+        Row: {
+          created_at: string
+          currency: string
+          executed_at: string
+          fees: number
+          id: string
+          notes: string | null
+          price: number
+          shares: number
+          symbol: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          executed_at?: string
+          fees?: number
+          id?: string
+          notes?: string | null
+          price: number
+          shares: number
+          symbol: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          executed_at?: string
+          fees?: number
+          id?: string
+          notes?: string | null
+          price?: number
+          shares?: number
+          symbol?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -77,6 +155,39 @@ export type Database = {
           full_name?: string | null
           id?: string
           timezone?: string | null
+        }
+        Relationships: []
+      }
+      user_api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_value: string
+          last_tested_at: string | null
+          provider: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_value: string
+          last_tested_at?: string | null
+          provider: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_value?: string
+          last_tested_at?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
