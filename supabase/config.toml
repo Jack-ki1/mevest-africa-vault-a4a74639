@@ -1,1 +1,4 @@
 project_id = "fulgofnlmlmetlgidhup"
+
+[functions.portfolio-snapshot]
+verify_jwt = false
