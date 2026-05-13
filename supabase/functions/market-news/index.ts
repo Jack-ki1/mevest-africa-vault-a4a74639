@@ -1,7 +1,14 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '*').split(',').map(o => o.trim()).filter(Boolean);
+function buildCors(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin');
+  const allowAll = ALLOWED_ORIGINS.includes('*');
+  const ok = allowAll || (origin && ALLOWED_ORIGINS.includes(origin));
+  return {
+    'Access-Control-Allow-Origin': allowAll ? '*' : (ok ? origin! : ALLOWED_ORIGINS[0] || ''),
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+}
 
 const sentimentWords = {
   positive: ['surge', 'gain', 'rally', 'rise', 'jump', 'soar', 'boost', 'profit', 'bullish', 'record', 'growth', 'up', 'high', 'beat', 'strong'],
@@ -18,6 +25,7 @@ function getSentiment(title: string): 'positive' | 'negative' | 'neutral' {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCors(req);
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
