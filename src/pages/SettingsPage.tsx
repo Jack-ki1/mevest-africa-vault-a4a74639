@@ -63,9 +63,32 @@ export default function SettingsPage() {
       }
       if (settingsData?.settings) {
         const s = settingsData.settings as any;
-        if (s.apiKeys) setApiKeys(s.apiKeys);
         if (s.notifications) setNotifs(prev => ({ ...prev, ...s.notifications }));
         if (s.security) setSecurity(prev => ({ ...prev, ...s.security }));
+        // Migrate any legacy keys still living in settings.apiKeys to the dedicated table.
+        if (s.apiKeys && Object.keys(s.apiKeys).length > 0) {
+          const rows = Object.entries(s.apiKeys).map(([provider, v]: any) => ({
+            user_id: user.id, provider, key_value: v.key, status: v.status || 'untested',
+            last_tested_at: v.lastTested || null,
+          }));
+          await supabase.from('user_api_keys').upsert(rows, { onConflict: 'user_id,provider' });
+          await supabase.from('user_settings').upsert({
+            user_id: user.id,
+            settings: { ...s, apiKeys: undefined } as any,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+      // Load API keys from the isolated table
+      const { data: keyRows } = await supabase
+        .from('user_api_keys').select('provider, key_value, status, last_tested_at')
+        .eq('user_id', user.id);
+      if (keyRows) {
+        const map: typeof apiKeys = {};
+        keyRows.forEach((r: any) => {
+          map[r.provider] = { key: r.key_value, status: r.status, lastTested: r.last_tested_at };
+        });
+        setApiKeys(map);
       }
       setProfileLoading(false);
     };
@@ -90,53 +113,53 @@ export default function SettingsPage() {
     toast({ title: 'Changes reset' });
   };
 
-  const saveSettings = async (newKeys?: typeof apiKeys) => {
+  const saveSettings = async () => {
     if (!user) return;
-    const settings = {
-      apiKeys: newKeys || apiKeys,
-      notifications: notifs,
-      security,
-    };
+    const settings = { notifications: notifs, security };
     await supabase.from('user_settings').upsert({ user_id: user.id, settings: settings as any, updated_at: new Date().toISOString() });
   };
 
   const handleSaveApiKey = async (providerId: string) => {
-    const updated = { ...apiKeys, [providerId]: { key: keyInput, status: 'untested' as const, lastTested: undefined } };
-    setApiKeys(updated);
+    if (!user) return;
+    const next = { key: keyInput, status: 'untested' as const, lastTested: undefined };
+    setApiKeys(prev => ({ ...prev, [providerId]: next }));
     setEditingKey(null);
     setKeyInput('');
-    await saveSettings(updated);
-    toast({ title: 'API key saved', description: 'Key stored securely.' });
+    const { error } = await supabase.from('user_api_keys').upsert({
+      user_id: user.id, provider: providerId, key_value: keyInput,
+      status: 'untested', last_tested_at: null, updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,provider' });
+    if (error) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'API key saved', description: 'Key stored in isolated, RLS-protected table.' });
   };
 
   const handleRemoveApiKey = async (providerId: string) => {
-    const updated = { ...apiKeys };
-    delete updated[providerId];
-    setApiKeys(updated);
-    await saveSettings(updated);
+    if (!user) return;
+    setApiKeys(prev => { const u = { ...prev }; delete u[providerId]; return u; });
+    await supabase.from('user_api_keys').delete().eq('user_id', user.id).eq('provider', providerId);
     toast({ title: 'API key removed' });
   };
 
   const handleTestApiKey = async (providerId: string) => {
+    if (!user) return;
     const provider = API_PROVIDERS.find(p => p.id === providerId);
     const stored = apiKeys[providerId];
     if (!provider || !stored?.key) return;
 
     setTestingKey(providerId);
     try {
-      // Simple validation by checking the key format
       const hasKey = stored.key.length >= 8;
-      const updated = {
-        ...apiKeys,
-        [providerId]: { ...stored, status: hasKey ? 'connected' as const : 'invalid' as const, lastTested: new Date().toISOString() },
-      };
-      setApiKeys(updated);
-      await saveSettings(updated);
-      toast({ title: hasKey ? 'Connection valid' : 'Invalid key', description: hasKey ? 'API key is properly formatted.' : 'Please check your API key.' });
+      const status = hasKey ? 'connected' as const : 'invalid' as const;
+      const lastTested = new Date().toISOString();
+      setApiKeys(prev => ({ ...prev, [providerId]: { ...stored, status, lastTested } }));
+      await supabase.from('user_api_keys').update({
+        status, last_tested_at: lastTested, updated_at: lastTested,
+      }).eq('user_id', user.id).eq('provider', providerId);
+      toast({ title: hasKey ? 'Connection valid' : 'Invalid key', description: hasKey ? 'API key format looks good.' : 'Please check your API key.' });
     } catch {
-      const updated = { ...apiKeys, [providerId]: { ...stored, status: 'invalid' as const, lastTested: new Date().toISOString() } };
-      setApiKeys(updated);
-      await saveSettings(updated);
       toast({ title: 'Test failed', variant: 'destructive' });
     }
     setTestingKey(null);
