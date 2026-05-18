@@ -3,7 +3,7 @@ import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { formatPct } from '@/data/market-data';
 import { useWatchlist } from '@/context/WatchlistContext';
 import { toast } from '@/hooks/use-toast';
-import { Star, Globe, Loader2, ChevronDown } from 'lucide-react';
+import { Star, Globe, Loader2, X } from 'lucide-react';
 
 interface ScreenerPageProps {
   onNavigate?: (page: string, sym?: string) => void;
@@ -22,165 +22,38 @@ interface DisplayAsset {
   isLive?: boolean;
 }
 
-const ASSET_TYPES = [
-  { val: 'all', label: 'All Types' },
-  { val: 'stock', label: 'Stocks' },
-  { val: 'etf', label: 'ETFs' },
-  { val: 'crypto', label: 'Crypto' },
-  { val: 'bond', label: 'Bonds' },
-  { val: 'commodity', label: 'Commodities' },
-  { val: 'forex', label: 'Forex' },
-  { val: 'fund', label: 'Mutual Funds' },
-  { val: 'index', label: 'Indices' },
-  { val: 'reit', label: 'REITs' },
-  { val: 'adr', label: 'ADRs' },
-];
-
-const EXCHANGES = [
-  { val: 'all', label: 'All Exchanges', region: '' },
-  { val: 'NYSE', label: '🇺🇸 NYSE', region: 'Americas' },
-  { val: 'NASDAQ', label: '🇺🇸 NASDAQ', region: 'Americas' },
-  { val: 'AMEX', label: '🇺🇸 AMEX', region: 'Americas' },
-  { val: 'TSX', label: '🇨🇦 TSX Toronto', region: 'Americas' },
-  { val: 'BVMF', label: '🇧🇷 B3 Brazil', region: 'Americas' },
-  { val: 'LSE', label: '🇬🇧 London', region: 'Europe' },
-  { val: 'FRA', label: '🇩🇪 Frankfurt', region: 'Europe' },
-  { val: 'PAR', label: '🇫🇷 Euronext Paris', region: 'Europe' },
-  { val: 'AMS', label: '🇳🇱 Amsterdam', region: 'Europe' },
-  { val: 'SWX', label: '🇨🇭 Swiss Exchange', region: 'Europe' },
-  { val: 'MCE', label: '🇪🇸 Madrid', region: 'Europe' },
-  { val: 'MIL', label: '🇮🇹 Milan', region: 'Europe' },
-  { val: 'OSL', label: '🇳🇴 Oslo', region: 'Europe' },
-  { val: 'STO', label: '🇸🇪 Stockholm', region: 'Europe' },
-  { val: 'HEL', label: '🇫🇮 Helsinki', region: 'Europe' },
-  { val: 'CPH', label: '🇩🇰 Copenhagen', region: 'Europe' },
-  { val: 'IST', label: '🇹🇷 Istanbul', region: 'Europe' },
-  { val: 'WSE', label: '🇵🇱 Warsaw', region: 'Europe' },
-  { val: 'TYO', label: '🇯🇵 Tokyo', region: 'Asia Pacific' },
-  { val: 'HKG', label: '🇭🇰 Hong Kong', region: 'Asia Pacific' },
-  { val: 'SHH', label: '🇨🇳 Shanghai', region: 'Asia Pacific' },
-  { val: 'SHZ', label: '🇨🇳 Shenzhen', region: 'Asia Pacific' },
-  { val: 'KRX', label: '🇰🇷 Korea (KRX)', region: 'Asia Pacific' },
-  { val: 'KSC', label: '🇰🇷 KOSDAQ', region: 'Asia Pacific' },
-  { val: 'TAI', label: '🇹🇼 Taiwan', region: 'Asia Pacific' },
-  { val: 'BSE', label: '🇮🇳 BSE India', region: 'Asia Pacific' },
-  { val: 'NSI', label: '🇮🇳 NSE India', region: 'Asia Pacific' },
-  { val: 'SGX', label: '🇸🇬 Singapore', region: 'Asia Pacific' },
-  { val: 'ASX', label: '🇦🇺 ASX Australia', region: 'Asia Pacific' },
-  { val: 'NZE', label: '🇳🇿 NZX', region: 'Asia Pacific' },
-  { val: 'JKT', label: '🇮🇩 Jakarta', region: 'Asia Pacific' },
-  { val: 'BKK', label: '🇹🇭 Bangkok', region: 'Asia Pacific' },
-  { val: 'KLS', label: '🇲🇾 Kuala Lumpur', region: 'Asia Pacific' },
-  { val: 'PHS', label: '🇵🇭 Philippines', region: 'Asia Pacific' },
-  { val: 'VNM', label: '🇻🇳 Vietnam', region: 'Asia Pacific' },
-  { val: 'NSE', label: '🇰🇪 NSE Kenya', region: 'Africa & Middle East' },
-  { val: 'JSE', label: '🇿🇦 JSE South Africa', region: 'Africa & Middle East' },
-  { val: 'NGM', label: '🇳🇬 Nigeria', region: 'Africa & Middle East' },
-  { val: 'EGX', label: '🇪🇬 Egypt', region: 'Africa & Middle East' },
-  { val: 'CSE', label: '🇲🇦 Casablanca', region: 'Africa & Middle East' },
-  { val: 'TAD', label: '🇸🇦 Saudi Tadawul', region: 'Africa & Middle East' },
-  { val: 'DFM', label: '🇦🇪 Dubai', region: 'Africa & Middle East' },
-  { val: 'QSE', label: '🇶🇦 Qatar', region: 'Africa & Middle East' },
-  { val: 'TASE', label: '🇮🇱 Tel Aviv', region: 'Africa & Middle East' },
-];
-
-const PERFORMANCE = [
-  { val: 'all', label: 'All Performance' },
-  { val: 'gainers', label: '📈 Top Gainers' },
-  { val: 'losers', label: '📉 Top Losers' },
-  { val: 'most_active', label: '🔥 Most Active' },
-];
-
-const SECTORS = [
-  { val: 'all', label: 'All Sectors' },
-  { val: 'Technology', label: '💻 Technology' },
-  { val: 'Healthcare', label: '🏥 Healthcare' },
-  { val: 'Financial', label: '🏦 Financial Services' },
-  { val: 'Energy', label: '⚡ Energy' },
-  { val: 'Consumer', label: '🛒 Consumer' },
-  { val: 'Industrial', label: '🏭 Industrials' },
-  { val: 'Communication', label: '📡 Communication' },
-  { val: 'Real Estate', label: '🏠 Real Estate' },
-  { val: 'Materials', label: '⛏️ Materials' },
-  { val: 'Utilities', label: '💡 Utilities' },
-];
-
 type Filters = { type: string; exchange: string; perf: string; sector: string };
 
-function FilterDropdown({ label, value, options, onChange }: {
-  label: string; value: string; options: { val: string; label: string; region?: string }[]; onChange: (v: string) => void;
+const PERF_CHIPS = [
+  { val: 'all', label: 'All' },
+  { val: 'gainers', label: '📈 Gainers' },
+  { val: 'losers', label: '📉 Losers' },
+  { val: 'most_active', label: '🔥 Active' },
+];
+
+function FreeTextFilter({ label, value, onChange, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const selected = options.find(o => o.val === value);
-
-  const filtered = search
-    ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase()))
-    : options;
-
-  // Group by region if available
-  const hasRegions = options.some(o => (o as any).region);
-
   return (
-    <div className="relative">
-      <button onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold bg-secondary border border-border text-foreground hover:border-primary/30 transition-colors min-w-[130px]">
-        <span className="text-[9px] text-muted-foreground uppercase tracking-wider mr-1">{label}:</span>
-        <span className="truncate">{selected?.label || value}</span>
-        <ChevronDown className="w-3 h-3 ml-auto text-muted-foreground" />
-      </button>
-
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute z-50 top-full mt-1 left-0 min-w-[220px] max-h-[320px] overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
-            {options.length > 8 && (
-              <div className="p-2 border-b border-border">
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
-                  className="w-full bg-secondary border border-border rounded-md px-2 py-1.5 text-[11px] text-foreground outline-none focus:border-primary" autoFocus />
-              </div>
-            )}
-            <div className="p-1">
-              {hasRegions ? (
-                (() => {
-                  const groups: Record<string, typeof filtered> = {};
-                  filtered.forEach(o => {
-                    const region = (o as any).region || '';
-                    if (!groups[region]) groups[region] = [];
-                    groups[region].push(o);
-                  });
-                  return Object.entries(groups).map(([region, items]) => (
-                    <div key={region}>
-                      {region && <div className="px-2 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-wider mt-1">{region}</div>}
-                      {items.map(o => (
-                        <button key={o.val} onClick={() => { onChange(o.val); setOpen(false); setSearch(''); }}
-                          className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] transition-colors ${value === o.val ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'}`}>
-                          {o.label}
-                        </button>
-                      ))}
-                    </div>
-                  ));
-                })()
-              ) : (
-                filtered.map(o => (
-                  <button key={o.val} onClick={() => { onChange(o.val); setOpen(false); setSearch(''); }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] transition-colors ${value === o.val ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'}`}>
-                    {o.label}
-                  </button>
-                ))
-              )}
-              {filtered.length === 0 && <div className="px-2 py-3 text-center text-[11px] text-muted-foreground">No results</div>}
-            </div>
-          </div>
-        </>
+    <div className="relative flex items-center gap-1.5 px-2.5 h-9 rounded-lg bg-secondary border border-border focus-within:border-primary/40 transition-colors min-w-[150px]">
+      <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-semibold flex-shrink-0">{label}:</span>
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="bg-transparent border-none outline-none text-[11px] text-foreground placeholder:text-muted-foreground/60 w-full min-w-0"
+      />
+      {value && (
+        <button onClick={() => onChange('')} className="flex-shrink-0" aria-label={`Clear ${label}`}>
+          <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+        </button>
       )}
     </div>
   );
 }
-
 export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
   const { allAssets, searchAssetsLive, getQuotesLive } = useRealtimeMarket();
-  const [filters, setFilters] = useState<Filters>({ type: 'all', exchange: 'all', perf: 'all', sector: 'all' });
+  const [filters, setFilters] = useState<Filters>({ type: '', exchange: '', perf: 'all', sector: '' });
   const [sort, setSort] = useState('mktcap');
   const [searchQuery, setSearchQuery] = useState('');
   const [liveResults, setLiveResults] = useState<DisplayAsset[]>([]);
@@ -200,9 +73,9 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
       try {
         const results = await searchAssetsLive(searchQuery);
         if (results.length > 0) {
-          const symbols = results.map(r => r.symbol).slice(0, 30);
+          const symbols = results.map(r => r.symbol).slice(0, 50);
           const quotes = await getQuotesLive(symbols);
-          const displayResults: DisplayAsset[] = results.slice(0, 30).map(r => {
+          const displayResults: DisplayAsset[] = results.slice(0, 50).map(r => {
             const q = quotes[r.symbol];
             return {
               sym: r.symbol, name: r.name, price: q?.price ?? 0, chgPct: q?.changePercent ?? 0,
@@ -235,9 +108,9 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
       items = allAssets.map(a => ({ sym: a.sym, name: a.name, price: a.price, chgPct: a.chgPct, type: a.type, exchange: a.exchange, country: a.country, sector: a.sector, currency: a.currency }));
     }
 
-    if (filters.type !== 'all') items = items.filter(a => a.type === filters.type);
-    if (filters.exchange !== 'all') items = items.filter(a => a.exchange.toUpperCase().includes(filters.exchange));
-    if (filters.sector !== 'all') items = items.filter(a => a.sector.toLowerCase().includes(filters.sector.toLowerCase()));
+    if (filters.type.trim()) items = items.filter(a => a.type.toLowerCase().includes(filters.type.trim().toLowerCase()));
+    if (filters.exchange.trim()) items = items.filter(a => a.exchange.toLowerCase().includes(filters.exchange.trim().toLowerCase()));
+    if (filters.sector.trim()) items = items.filter(a => a.sector.toLowerCase().includes(filters.sector.trim().toLowerCase()));
     if (filters.perf === 'gainers') items = [...items].sort((a, b) => b.chgPct - a.chgPct);
     else if (filters.perf === 'losers') items = [...items].sort((a, b) => a.chgPct - b.chgPct);
 
@@ -277,14 +150,22 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
         {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
       </div>
 
-      {/* Filter dropdowns */}
+      {/* Free-text filters + performance chips */}
       <div className="flex flex-wrap gap-2 items-center">
-        <FilterDropdown label="Type" value={filters.type} options={ASSET_TYPES} onChange={v => setFilters(f => ({ ...f, type: v }))} />
-        <FilterDropdown label="Exchange" value={filters.exchange} options={EXCHANGES} onChange={v => setFilters(f => ({ ...f, exchange: v }))} />
-        <FilterDropdown label="Performance" value={filters.perf} options={PERFORMANCE} onChange={v => setFilters(f => ({ ...f, perf: v }))} />
-        <FilterDropdown label="Sector" value={filters.sector} options={SECTORS} onChange={v => setFilters(f => ({ ...f, sector: v }))} />
+        <FreeTextFilter label="Type" value={filters.type} onChange={v => setFilters(f => ({ ...f, type: v }))} placeholder="stock, etf, crypto..." />
+        <FreeTextFilter label="Exchange" value={filters.exchange} onChange={v => setFilters(f => ({ ...f, exchange: v }))} placeholder="NSE, NASDAQ, LSE..." />
+        <FreeTextFilter label="Sector" value={filters.sector} onChange={v => setFilters(f => ({ ...f, sector: v }))} placeholder="Technology, Energy..." />
 
-        <select value={sort} onChange={e => setSort(e.target.value)} className="ml-auto px-3 py-2 rounded-lg text-[11px] bg-secondary border border-border text-foreground outline-none">
+        <div className="flex items-center gap-1 ml-1">
+          {PERF_CHIPS.map(p => (
+            <button key={p.val} onClick={() => setFilters(f => ({ ...f, perf: p.val }))}
+              className={`px-2.5 h-9 rounded-lg text-[11px] font-semibold border transition-colors ${filters.perf === p.val ? 'bg-primary/10 border-primary/40 text-primary' : 'bg-secondary border-border text-foreground hover:border-primary/30'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <select value={sort} onChange={e => setSort(e.target.value)} className="ml-auto h-9 px-3 rounded-lg text-[11px] bg-secondary border border-border text-foreground outline-none">
           <option value="mktcap">Sort: Default</option>
           <option value="chg_desc">% Change ↓</option>
           <option value="chg_asc">% Change ↑</option>
