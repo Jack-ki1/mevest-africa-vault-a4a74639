@@ -73,9 +73,9 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
       try {
         const results = await searchAssetsLive(searchQuery);
         if (results.length > 0) {
-          const symbols = results.map(r => r.symbol).slice(0, 30);
+          const symbols = results.map(r => r.symbol).slice(0, 50);
           const quotes = await getQuotesLive(symbols);
-          const displayResults: DisplayAsset[] = results.slice(0, 30).map(r => {
+          const displayResults: DisplayAsset[] = results.slice(0, 50).map(r => {
             const q = quotes[r.symbol];
             return {
               sym: r.symbol, name: r.name, price: q?.price ?? 0, chgPct: q?.changePercent ?? 0,
