@@ -108,9 +108,9 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
       items = allAssets.map(a => ({ sym: a.sym, name: a.name, price: a.price, chgPct: a.chgPct, type: a.type, exchange: a.exchange, country: a.country, sector: a.sector, currency: a.currency }));
     }
 
-    if (filters.type !== 'all') items = items.filter(a => a.type === filters.type);
-    if (filters.exchange !== 'all') items = items.filter(a => a.exchange.toUpperCase().includes(filters.exchange));
-    if (filters.sector !== 'all') items = items.filter(a => a.sector.toLowerCase().includes(filters.sector.toLowerCase()));
+    if (filters.type.trim()) items = items.filter(a => a.type.toLowerCase().includes(filters.type.trim().toLowerCase()));
+    if (filters.exchange.trim()) items = items.filter(a => a.exchange.toLowerCase().includes(filters.exchange.trim().toLowerCase()));
+    if (filters.sector.trim()) items = items.filter(a => a.sector.toLowerCase().includes(filters.sector.trim().toLowerCase()));
     if (filters.perf === 'gainers') items = [...items].sort((a, b) => b.chgPct - a.chgPct);
     else if (filters.perf === 'losers') items = [...items].sort((a, b) => a.chgPct - b.chgPct);
 
