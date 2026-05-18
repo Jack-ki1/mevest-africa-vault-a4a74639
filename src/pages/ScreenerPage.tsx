@@ -53,7 +53,7 @@ function FreeTextFilter({ label, value, onChange, placeholder }: {
 }
 export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
   const { allAssets, searchAssetsLive, getQuotesLive } = useRealtimeMarket();
-  const [filters, setFilters] = useState<Filters>({ type: 'all', exchange: 'all', perf: 'all', sector: 'all' });
+  const [filters, setFilters] = useState<Filters>({ type: '', exchange: '', perf: 'all', sector: '' });
   const [sort, setSort] = useState('mktcap');
   const [searchQuery, setSearchQuery] = useState('');
   const [liveResults, setLiveResults] = useState<DisplayAsset[]>([]);
