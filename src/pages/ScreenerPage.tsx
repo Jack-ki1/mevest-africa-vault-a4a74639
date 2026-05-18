@@ -3,7 +3,7 @@ import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { formatPct } from '@/data/market-data';
 import { useWatchlist } from '@/context/WatchlistContext';
 import { toast } from '@/hooks/use-toast';
-import { Star, Globe, Loader2, ChevronDown } from 'lucide-react';
+import { Star, Globe, Loader2, X } from 'lucide-react';
 
 interface ScreenerPageProps {
   onNavigate?: (page: string, sym?: string) => void;
