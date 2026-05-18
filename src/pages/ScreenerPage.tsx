@@ -150,14 +150,22 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
         {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-primary" />}
       </div>
 
-      {/* Filter dropdowns */}
+      {/* Free-text filters + performance chips */}
       <div className="flex flex-wrap gap-2 items-center">
-        <FilterDropdown label="Type" value={filters.type} options={ASSET_TYPES} onChange={v => setFilters(f => ({ ...f, type: v }))} />
-        <FilterDropdown label="Exchange" value={filters.exchange} options={EXCHANGES} onChange={v => setFilters(f => ({ ...f, exchange: v }))} />
-        <FilterDropdown label="Performance" value={filters.perf} options={PERFORMANCE} onChange={v => setFilters(f => ({ ...f, perf: v }))} />
-        <FilterDropdown label="Sector" value={filters.sector} options={SECTORS} onChange={v => setFilters(f => ({ ...f, sector: v }))} />
+        <FreeTextFilter label="Type" value={filters.type} onChange={v => setFilters(f => ({ ...f, type: v }))} placeholder="stock, etf, crypto..." />
+        <FreeTextFilter label="Exchange" value={filters.exchange} onChange={v => setFilters(f => ({ ...f, exchange: v }))} placeholder="NSE, NASDAQ, LSE..." />
+        <FreeTextFilter label="Sector" value={filters.sector} onChange={v => setFilters(f => ({ ...f, sector: v }))} placeholder="Technology, Energy..." />
 
-        <select value={sort} onChange={e => setSort(e.target.value)} className="ml-auto px-3 py-2 rounded-lg text-[11px] bg-secondary border border-border text-foreground outline-none">
+        <div className="flex items-center gap-1 ml-1">
+          {PERF_CHIPS.map(p => (
+            <button key={p.val} onClick={() => setFilters(f => ({ ...f, perf: p.val }))}
+              className={`px-2.5 h-9 rounded-lg text-[11px] font-semibold border transition-colors ${filters.perf === p.val ? 'bg-primary/10 border-primary/40 text-primary' : 'bg-secondary border-border text-foreground hover:border-primary/30'}`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <select value={sort} onChange={e => setSort(e.target.value)} className="ml-auto h-9 px-3 rounded-lg text-[11px] bg-secondary border border-border text-foreground outline-none">
           <option value="mktcap">Sort: Default</option>
           <option value="chg_desc">% Change ↓</option>
           <option value="chg_asc">% Change ↑</option>
