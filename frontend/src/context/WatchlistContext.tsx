@@ -16,13 +16,34 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
 
   const loadWatchlist = useCallback(() => {
-    if (!user) { setWatchlist([]); return; }
+    if (!user) {
+      try {
+        const demo = localStorage.getItem('mevest_demo_watchlist');
+        if (demo) setWatchlist(JSON.parse(demo));
+        else setWatchlist([]);
+      } catch { setWatchlist([]); }
+      return;
+    }
     supabase
       .from('watchlist_items')
       .select('symbol')
       .eq('user_id', user.id)
-      .then(({ data }) => {
-        if (data) setWatchlist(data.map((d: any) => d.symbol));
+      .then(({ data, error }) => {
+        if (!error && data) setWatchlist(data.map((d: any) => d.symbol));
+        else if (error) {
+          console.warn('[Watchlist] load failed, using cache:', error.message);
+          try {
+            const cached = localStorage.getItem(`mevest_watchlist_${user.id}`);
+            if (cached) setWatchlist(JSON.parse(cached));
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.warn('[Watchlist] network error, using cache:', err?.message);
+        try {
+          const cached = localStorage.getItem(`mevest_watchlist_${user.id}`);
+          if (cached) setWatchlist(JSON.parse(cached));
+        } catch {}
       });
   }, [user]);
 
@@ -37,14 +58,24 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
   const addToWatchlist = useCallback(async (sym: string) => {
     if (!user) return;
-    setWatchlist(prev => prev.includes(sym) ? prev : [...prev, sym]);
-    await supabase.from('watchlist_items').upsert({ user_id: user.id, symbol: sym }, { onConflict: 'user_id,symbol' });
+    setWatchlist(prev => {
+      const next = prev.includes(sym) ? prev : [...prev, sym];
+      try { localStorage.setItem(`mevest_watchlist_${user.id}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    const { error } = await supabase.from('watchlist_items').upsert({ user_id: user.id, symbol: sym }, { onConflict: 'user_id,symbol' });
+    if (error) console.warn('[Watchlist] upsert failed:', error.message);
   }, [user]);
 
   const removeFromWatchlist = useCallback(async (sym: string) => {
     if (!user) return;
-    setWatchlist(prev => prev.filter(s => s !== sym));
-    await supabase.from('watchlist_items').delete().eq('user_id', user.id).eq('symbol', sym);
+    setWatchlist(prev => {
+      const next = prev.filter(s => s !== sym);
+      try { localStorage.setItem(`mevest_watchlist_${user.id}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    const { error } = await supabase.from('watchlist_items').delete().eq('user_id', user.id).eq('symbol', sym);
+    if (error) console.warn('[Watchlist] delete failed:', error.message);
   }, [user]);
 
   const isInWatchlist = useCallback((sym: string) => watchlist.includes(sym), [watchlist]);

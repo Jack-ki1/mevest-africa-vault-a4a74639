@@ -1,3 +1,10 @@
+# Env — never commit real keys (see root .gitignore)
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
 # Logs
 logs
 *.log
@@ -11,6 +18,9 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Supabase local temp (if ever run from frontend)
+.supabase/
 
 # Editor directories and files
 .vscode/*

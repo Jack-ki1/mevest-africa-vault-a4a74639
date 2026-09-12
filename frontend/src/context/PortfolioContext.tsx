@@ -31,7 +31,16 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadHoldings = useCallback(() => {
-    if (!user) { setHoldings([]); setLoading(false); return; }
+    if (!user) {
+      // No user: try demo localStorage fallback, otherwise empty
+      try {
+        const demo = localStorage.getItem('mevest_demo_holdings');
+        if (demo) setHoldings(JSON.parse(demo));
+        else setHoldings([]);
+      } catch { setHoldings([]); }
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     supabase
       .from('holdings')
@@ -50,7 +59,21 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             country: h.country || 'US',
             color: COLORS[i % COLORS.length],
           })));
+        } else if (error) {
+          console.warn('[Portfolio] load failed, falling back to local cache:', error.message);
+          try {
+            const cached = localStorage.getItem(`mevest_holdings_${user.id}`);
+            if (cached) setHoldings(JSON.parse(cached));
+          } catch {}
         }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.warn('[Portfolio] network error, using cache:', err?.message);
+        try {
+          const cached = localStorage.getItem(`mevest_holdings_${user.id}`);
+          if (cached) setHoldings(JSON.parse(cached));
+        } catch {}
         setLoading(false);
       });
   }, [user]);
@@ -69,18 +92,26 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     // Optimistic update
     setHoldings(prev => {
       if (prev.find(x => x.sym === h.sym)) return prev;
-      return [...prev, { ...h, price: h.cost, sector: 'Other', country: 'US', color: COLORS[prev.length % COLORS.length] }];
+      const next = [...prev, { ...h, price: h.cost, sector: 'Other', country: 'US', color: COLORS[prev.length % COLORS.length] }];
+      try { localStorage.setItem(`mevest_holdings_${user.id}`, JSON.stringify(next)); } catch {}
+      return next;
     });
     // Persist
-    await supabase.from('holdings').upsert({
+    const { error } = await supabase.from('holdings').upsert({
       user_id: user.id, symbol: h.sym, name: h.name, type: h.type, shares: h.shares, cost_basis: h.cost, country: 'US',
     }, { onConflict: 'user_id,symbol' });
+    if (error) console.warn('[Portfolio] upsert failed:', error.message);
   }, [user]);
 
   const removeHolding = useCallback(async (sym: string) => {
     if (!user) return;
-    setHoldings(prev => prev.filter(h => h.sym !== sym));
-    await supabase.from('holdings').delete().eq('user_id', user.id).eq('symbol', sym);
+    setHoldings(prev => {
+      const next = prev.filter(h => h.sym !== sym);
+      try { localStorage.setItem(`mevest_holdings_${user.id}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+    const { error } = await supabase.from('holdings').delete().eq('user_id', user.id).eq('symbol', sym);
+    if (error) console.warn('[Portfolio] delete failed:', error.message);
   }, [user]);
 
   return (
