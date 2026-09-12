@@ -1,0 +1,54 @@
+project_id = "fulgofnlmlmetlgidhup"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost:54321"
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[functions.ai-insights]
+enabled = true
+verify_jwt = false
+import_map = "./functions/ai-insights/import_map.json"
+entrypoint = "./functions/ai-insights/index.ts"
+
+[functions.market-search]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/market-search/index.ts"
+
+[functions.market-quotes]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/market-quotes/index.ts"
+
+[functions.market-chart]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/market-chart/index.ts"
+
+[functions.market-news]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/market-news/index.ts"
+
+[functions.portfolio-snapshot]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/portfolio-snapshot/index.ts"

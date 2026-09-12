@@ -379,6 +379,47 @@ function rateLimited(key: string): boolean {
   return arr.length > RL_MAX;
 }
 
+// Resolve AI provider — priority: Gemini > OpenAI > OpenRouter > Lovable (legacy).
+function getAiConfig(): { url: string; headers: Record<string, string>; model: string; provider: string } | null {
+  const gemini = Deno.env.get('GEMINI_API_KEY');
+  if (gemini) {
+    return {
+      url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${gemini}` },
+      model: Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash',
+      provider: 'gemini',
+    };
+  }
+  const openai = Deno.env.get('OPENAI_API_KEY');
+  if (openai) {
+    return {
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openai}` },
+      model: Deno.env.get('OPENAI_MODEL') || 'gpt-4o-mini',
+      provider: 'openai',
+    };
+  }
+  const openrouter = Deno.env.get('OPENROUTER_API_KEY');
+  if (openrouter) {
+    return {
+      url: 'https://openrouter.ai/api/v1/chat/completions',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openrouter}`, 'HTTP-Referer': Deno.env.get('APP_URL') || 'https://mevest.africa', 'X-Title': 'MEVEST Africa Vault' },
+      model: Deno.env.get('OPENROUTER_MODEL') || 'google/gemini-flash-1.5',
+      provider: 'openrouter',
+    };
+  }
+  const lovable = Deno.env.get('LOVABLE_API_KEY');
+  if (lovable) {
+    return {
+      url: 'https://ai.gateway.lovable.dev/v1/chat/completions',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lovable}` },
+      model: 'google/gemini-3-flash-preview',
+      provider: 'lovable',
+    };
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = buildCors(origin);
@@ -388,9 +429,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: 'AI not configured' }), {
+    const aiConfig = getAiConfig();
+    if (!aiConfig) {
+      return new Response(JSON.stringify({ error: 'AI not configured. Set GEMINI_API_KEY, OPENAI_API_KEY or OPENROUTER_API_KEY.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -444,11 +485,11 @@ RULES:
       // Tool-calling loop (max 5 iterations)
       let currentMessages = chatMessages;
       for (let i = 0; i < 5; i++) {
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const response = await fetch(aiConfig.url, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+          headers: aiConfig.headers,
           body: JSON.stringify({
-            model: 'google/gemini-3-flash-preview',
+            model: aiConfig.model,
             messages: currentMessages,
             tools,
             stream: false,
@@ -501,11 +542,11 @@ RULES:
         }
 
         // Fallback: stream a new request without tools
-        const streamResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const streamResp = await fetch(aiConfig.url, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+          headers: aiConfig.headers,
           body: JSON.stringify({
-            model: 'google/gemini-3-flash-preview',
+            model: aiConfig.model,
             messages: currentMessages.filter((m: any) => m.role !== 'tool' && !m.tool_calls),
             stream: true,
           }),
@@ -532,11 +573,11 @@ RULES:
       ? `Analyze this portfolio: ${JSON.stringify(portfolio)}`
       : 'The user has no holdings yet. Provide general investment advice for a new investor.';
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch(aiConfig.url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: aiConfig.headers,
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: aiConfig.model,
         messages: [{ role: 'system', content: insightPrompt }, { role: 'user', content: userContent }],
       }),
     });

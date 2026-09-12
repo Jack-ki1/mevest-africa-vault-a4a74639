@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Eye, EyeOff, TrendingUp } from 'lucide-react';
 
@@ -106,6 +106,14 @@ export default function AuthPage() {
 
         {/* Form card */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-xl">
+          {!isSupabaseConfigured() && (
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-foreground">
+              Supabase is not configured yet. Copy <code className="font-mono">.env.example</code> to{' '}
+              <code className="font-mono">.env</code> and set <code className="font-mono">VITE_SUPABASE_URL</code> and{' '}
+              <code className="font-mono">VITE_SUPABASE_ANON_KEY</code>, then restart the dev server.
+            </div>
+          )}
+
           {/* Google Sign In */}
           {mode !== 'forgot' && (
             <>
