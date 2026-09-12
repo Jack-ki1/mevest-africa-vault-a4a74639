@@ -10,6 +10,27 @@ function buildCors(req: Request): Record<string, string> {
   };
 }
 
+async function searchFinnhub(query: string): Promise<Array<{ symbol:string; name:string; exchange:string; exchangeDisplay:string; type:string; sector:string; industry:string; score:number }>> {
+  const key = Deno.env.get('FINNHUB_KEY');
+  if (!key) return [];
+  try {
+    const url = `https://finnhub.io/api/v1/search?q=${encodeURIComponent(query)}&token=${key}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const j = await res.json() as { count?: number; result?: Array<{ symbol:string; description:string; displaySymbol?:string; type:string }> };
+    return (j.result || []).slice(0, 40).map(r => ({
+      symbol: r.symbol,
+      name: r.description || r.symbol,
+      exchange: r.displaySymbol?.split('.')[1] || '',
+      exchangeDisplay: r.displaySymbol || r.symbol,
+      type: r.type || 'EQUITY',
+      sector: '',
+      industry: '',
+      score: 0,
+    }));
+  } catch { return []; }
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = buildCors(req);
   if (req.method === 'OPTIONS') {
@@ -30,24 +51,35 @@ Deno.serve(async (req) => {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
 
-    if (!response.ok) {
+    let results: Array<{ symbol:string; name:string; exchange:string; exchangeDisplay:string; type:string; sector:string; industry:string; score:number }> = [];
+    let yahooOk = false;
+    if (response.ok) {
+      const data = await response.json();
+      results = (data.quotes || []).map((q: { symbol:string; shortname?:string; longname?:string; exchange?:string; exchDisp?:string; quoteType?:string; sector?:string; industry?:string; score?:number }) => ({
+        symbol: q.symbol,
+        name: q.shortname || q.longname || q.symbol,
+        exchange: q.exchange || q.exchDisp || '',
+        exchangeDisplay: q.exchDisp || q.exchange || '',
+        type: q.quoteType || 'EQUITY',
+        sector: q.sector || '',
+        industry: q.industry || '',
+        score: q.score || 0,
+      }));
+      yahooOk = results.length > 0;
+    } else {
       console.error('Yahoo search failed:', response.status);
+    }
+
+    if (!yahooOk) {
+      const fb = await searchFinnhub(query);
+      if (fb.length > 0) results = fb;
+    }
+    if (results.length === 0 && !yahooOk) {
+      // still return empty but don't error
       return new Response(JSON.stringify({ results: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const data = await response.json();
-    let results = (data.quotes || []).map((q: any) => ({
-      symbol: q.symbol,
-      name: q.shortname || q.longname || q.symbol,
-      exchange: q.exchange || q.exchDisp || '',
-      exchangeDisplay: q.exchDisp || q.exchange || '',
-      type: q.quoteType || 'EQUITY',
-      sector: q.sector || '',
-      industry: q.industry || '',
-      score: q.score || 0,
-    }));
 
     // Filter by type if specified
     if (type && type !== 'all') {

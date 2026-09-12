@@ -33,6 +33,45 @@ async function fetchJson(url: string, retries = 1): Promise<any> {
   return null;
 }
 
+async function fetchFinnhubQuote(symbol: string): Promise<Record<string, unknown> | null> {
+  const key = Deno.env.get('FINNHUB_KEY');
+  if (!key) return null;
+  try {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const j = await res.json() as { c?: number; d?: number; dp?: number; h?: number; l?: number; o?: number; pc?: number };
+    if (typeof j.c !== 'number' || j.c === 0) return null;
+    const price = j.c;
+    const prev = j.pc ?? price;
+    const change = j.d ?? price - prev;
+    const changePercent = j.dp ?? (prev ? (change / prev) * 100 : 0);
+    return {
+      symbol,
+      name: symbol,
+      price,
+      change,
+      changePercent,
+      volume: 0,
+      marketCap: 0,
+      currency: 'USD',
+      exchange: '',
+      type: 'EQUITY',
+      prevClose: prev,
+      open: j.o ?? 0,
+      dayHigh: j.h ?? 0,
+      dayLow: j.l ?? 0,
+      fiftyTwoWeekHigh: 0,
+      fiftyTwoWeekLow: 0,
+      fiftyDayAvg: 0,
+      twoHundredDayAvg: 0,
+      pe: null,
+      dividendYield: null,
+      eps: null,
+    };
+  } catch { return null; }
+}
+
 // Fetch a single symbol via the chart endpoint (no crumb required, server-IP friendly).
 async function fetchQuoteViaChart(symbol: string): Promise<any | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d&includePrePost=false`;
@@ -131,10 +170,19 @@ Deno.serve(async (req) => {
     }
 
     // Fallback: any symbol that wasn't returned, fetch via chart endpoint in parallel.
-    const missing = limited.filter((s: string) => !quotes[s]);
+    let missing = limited.filter((s: string) => !quotes[s]);
     if (missing.length > 0) {
       const results = await Promise.all(missing.map((s: string) => fetchQuoteViaChart(s).catch(() => null)));
       results.forEach((q, i) => {
+        if (q) quotes[missing[i]] = q;
+      });
+    }
+
+    // Final fallback: Finnhub for still-missing symbols
+    missing = limited.filter((s: string) => !quotes[s]);
+    if (missing.length > 0 && Deno.env.get('FINNHUB_KEY')) {
+      const fb = await Promise.all(missing.map((s: string) => fetchFinnhubQuote(s).catch(() => null)));
+      fb.forEach((q, i) => {
         if (q) quotes[missing[i]] = q;
       });
     }

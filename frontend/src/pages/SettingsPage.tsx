@@ -43,8 +43,8 @@ export default function SettingsPage() {
     emailEnabled: true, pushEnabled: true, smsEnabled: false,
   });
 
-  // Security state
-  const [security, setSecurity] = useState({ twoFA: true, sessionTimeout: '30', loginAlerts: true });
+  // Security state — 2FA is UI-only until Supabase MFA is wired (default off to avoid misleading)
+  const [security, setSecurity] = useState({ twoFA: false, sessionTimeout: '30', loginAlerts: true });
 
   // Load profile and settings from DB
   useEffect(() => {
@@ -62,19 +62,19 @@ export default function SettingsPage() {
         setProfile(prev => ({ ...prev, email: user.email || '' }));
       }
       if (settingsData?.settings) {
-        const s = settingsData.settings as any;
-        if (s.notifications) setNotifs(prev => ({ ...prev, ...s.notifications }));
-        if (s.security) setSecurity(prev => ({ ...prev, ...s.security }));
+        const s = settingsData.settings as Record<string, unknown>;
+        if (s.notifications) setNotifs(prev => ({ ...prev, ...(s.notifications as Partial<typeof prev>) }));
+        if (s.security) setSecurity(prev => ({ ...prev, ...(s.security as Partial<typeof prev>) }));
         // Migrate any legacy keys still living in settings.apiKeys to the dedicated table.
-        if (s.apiKeys && Object.keys(s.apiKeys).length > 0) {
-          const rows = Object.entries(s.apiKeys).map(([provider, v]: any) => ({
+        if (s.apiKeys && typeof s.apiKeys === 'object' && Object.keys(s.apiKeys as Record<string, unknown>).length > 0) {
+          const rows = Object.entries(s.apiKeys as Record<string, { key: string; status?: string; lastTested?: string }>).map(([provider, v]) => ({
             user_id: user.id, provider, key_value: v.key, status: v.status || 'untested',
             last_tested_at: v.lastTested || null,
           }));
           await supabase.from('user_api_keys').upsert(rows, { onConflict: 'user_id,provider' });
           await supabase.from('user_settings').upsert({
             user_id: user.id,
-            settings: { ...s, apiKeys: undefined } as any,
+            settings: { ...(s as Record<string, unknown>), apiKeys: undefined } as unknown as Record<string, never>,
             updated_at: new Date().toISOString(),
           });
         }
@@ -85,8 +85,8 @@ export default function SettingsPage() {
         .eq('user_id', user.id);
       if (keyRows) {
         const map: typeof apiKeys = {};
-        keyRows.forEach((r: any) => {
-          map[r.provider] = { key: r.key_value, status: r.status, lastTested: r.last_tested_at };
+        keyRows.forEach((r: { provider: string; key_value: string; status: string; last_tested_at: string | null }) => {
+          map[r.provider] = { key: r.key_value, status: r.status as typeof apiKeys[string]['status'], lastTested: r.last_tested_at ?? undefined };
         });
         setApiKeys(map);
       }
@@ -116,7 +116,7 @@ export default function SettingsPage() {
   const saveSettings = async () => {
     if (!user) return;
     const settings = { notifications: notifs, security };
-    await supabase.from('user_settings').upsert({ user_id: user.id, settings: settings as any, updated_at: new Date().toISOString() });
+    await supabase.from('user_settings').upsert({ user_id: user.id, settings: settings as unknown as Record<string, never>, updated_at: new Date().toISOString() });
   };
 
   const handleSaveApiKey = async (providerId: string) => {
@@ -151,14 +151,50 @@ export default function SettingsPage() {
 
     setTestingKey(providerId);
     try {
-      const hasKey = stored.key.length >= 8;
-      const status = hasKey ? 'connected' as const : 'invalid' as const;
+      let status: 'connected' | 'invalid' = 'invalid';
+      let detail = 'Please check your API key.';
+      if (!provider.testUrl) {
+        // Custom endpoint — just validate format length
+        const hasKey = stored.key.length >= 8;
+        status = hasKey ? 'connected' : 'invalid';
+        detail = hasKey ? 'Key format looks good (custom endpoint — manual verification required).' : 'Key too short.';
+      } else {
+        // Attempt real request — proxied where possible, but direct fetch will expose key in network tab (warned in UI)
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(provider.testUrl + encodeURIComponent(stored.key), { signal: controller.signal });
+          clearTimeout(timeout);
+          if (res.ok) {
+            status = 'connected';
+            detail = 'Connection succeeded — provider returned 200.';
+          } else if (res.status === 401 || res.status === 403) {
+            status = 'invalid';
+            detail = `Provider rejected key (${res.status}).`;
+          } else {
+            status = res.ok ? 'connected' : 'invalid';
+            detail = `Provider returned ${res.status}.`;
+          }
+        } catch (fetchErr) {
+          clearTimeout(timeout);
+          // CORS or network failure — fall back to format check with warning
+          const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+          if (msg.includes('abort')) {
+            status = 'invalid';
+            detail = 'Request timed out.';
+          } else {
+            const hasKey = stored.key.length >= 8;
+            status = hasKey ? 'connected' : 'invalid';
+            detail = hasKey ? 'Could not verify via browser (CORS/network) — format looks valid. Keys are not used by market data yet.' : 'Key too short.';
+          }
+        }
+      }
       const lastTested = new Date().toISOString();
       setApiKeys(prev => ({ ...prev, [providerId]: { ...stored, status, lastTested } }));
       await supabase.from('user_api_keys').update({
         status, last_tested_at: lastTested, updated_at: lastTested,
       }).eq('user_id', user.id).eq('provider', providerId);
-      toast({ title: hasKey ? 'Connection valid' : 'Invalid key', description: hasKey ? 'API key format looks good.' : 'Please check your API key.' });
+      toast({ title: status === 'connected' ? 'Connection valid' : 'Invalid key', description: detail });
     } catch {
       toast({ title: 'Test failed', variant: 'destructive' });
     }
@@ -378,7 +414,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="p-3 bg-secondary rounded-lg border border-border text-[11px] text-muted-foreground leading-relaxed">
-              <strong className="text-foreground">🔒 Security:</strong> API keys are stored in your account settings and are never shared. They're used to enhance your data feeds beyond what's available for free.
+              <strong className="text-foreground">🔒 Security:</strong> API keys are stored in RLS-protected <code className="font-mono">user_api_keys</code> (plaintext — encryption at rest is on the roadmap). Testing calls the provider directly from your browser (key visible in network tab); for production use, keys should be proxied via an edge function. Keys are not yet used by market data — Yahoo Finance is the active source.
             </div>
           </div>
         );
@@ -391,10 +427,10 @@ export default function SettingsPage() {
               <div className="space-y-[7px]">
                 <div className="flex items-center justify-between px-[11px] py-[11px] bg-secondary rounded-lg border border-border">
                   <div>
-                    <div className="text-xs font-semibold">Two-Factor Authentication (2FA)</div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">Add an extra layer of security</div>
+                    <div className="text-xs font-semibold flex items-center gap-2">Two-Factor Authentication (2FA) <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">Coming soon</span></div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Preference only — not yet enforced via Supabase MFA</div>
                   </div>
-                  <button onClick={() => { setSecurity(s => ({ ...s, twoFA: !s.twoFA })); toast({ title: security.twoFA ? '2FA disabled' : '2FA enabled' }); }}
+                  <button onClick={() => { setSecurity(s => ({ ...s, twoFA: !s.twoFA })); toast({ title: security.twoFA ? '2FA disabled (preference saved, enforcement coming soon)' : '2FA enabled (preference saved, enforcement coming soon)' }); }}
                     className={`w-9 h-5 rounded-full relative transition-colors ${security.twoFA ? 'bg-primary' : 'bg-muted'}`}>
                     <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${security.twoFA ? 'left-[19px]' : 'left-[3px]'}`} />
                   </button>

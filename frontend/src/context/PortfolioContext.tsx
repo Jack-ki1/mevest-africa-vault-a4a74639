@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 
 export interface Holding {
   sym: string;
@@ -27,6 +28,7 @@ const COLORS = ['#5b9cf6','#63d2aa','#a78bfa','#f5a623','#f0616b','#fb8c5a','#26
 
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { registerSymbols } = useRealtimeMarket();
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,7 +39,10 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         const demo = localStorage.getItem('mevest_demo_holdings');
         if (demo) setHoldings(JSON.parse(demo));
         else setHoldings([]);
-      } catch { setHoldings([]); }
+      } catch (err) {
+        console.warn('[Portfolio] demo cache parse failed', err);
+        setHoldings([]);
+      }
       setLoading(false);
       return;
     }
@@ -48,7 +53,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
       .eq('user_id', user.id)
       .then(({ data, error }) => {
         if (!error && data) {
-          setHoldings(data.map((h: any, i: number) => ({
+          setHoldings(data.map((h: { symbol: string; name: string; type?: string; shares: number | string; cost_basis: number | string; country?: string }, i: number) => ({
             sym: h.symbol,
             name: h.name,
             type: h.type || 'stock',
@@ -64,21 +69,33 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
           try {
             const cached = localStorage.getItem(`mevest_holdings_${user.id}`);
             if (cached) setHoldings(JSON.parse(cached));
-          } catch {}
+          } catch (err) {
+            console.warn('[Portfolio] cache read failed', err);
+          }
         }
         setLoading(false);
       })
-      .catch((err) => {
-        console.warn('[Portfolio] network error, using cache:', err?.message);
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[Portfolio] network error, using cache:', msg);
         try {
           const cached = localStorage.getItem(`mevest_holdings_${user.id}`);
           if (cached) setHoldings(JSON.parse(cached));
-        } catch {}
+        } catch (cacheErr) {
+          console.warn('[Portfolio] cache read failed', cacheErr);
+        }
         setLoading(false);
       });
   }, [user]);
 
   useEffect(() => { loadHoldings(); }, [loadHoldings]);
+
+  // Register holding symbols for live polling
+  useEffect(() => {
+    if (holdings.length > 0) {
+      registerSymbols(holdings.map(h => h.sym));
+    }
+  }, [holdings, registerSymbols]);
 
   // Listen for data changes from AI chatbot
   useEffect(() => {
@@ -93,7 +110,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     setHoldings(prev => {
       if (prev.find(x => x.sym === h.sym)) return prev;
       const next = [...prev, { ...h, price: h.cost, sector: 'Other', country: 'US', color: COLORS[prev.length % COLORS.length] }];
-      try { localStorage.setItem(`mevest_holdings_${user.id}`, JSON.stringify(next)); } catch {}
+      try { localStorage.setItem(`mevest_holdings_${user.id}`, JSON.stringify(next)); } catch (err) {
+        console.warn('[Portfolio] cache write failed', err);
+      }
       return next;
     });
     // Persist
@@ -107,7 +126,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     setHoldings(prev => {
       const next = prev.filter(h => h.sym !== sym);
-      try { localStorage.setItem(`mevest_holdings_${user.id}`, JSON.stringify(next)); } catch {}
+      try { localStorage.setItem(`mevest_holdings_${user.id}`, JSON.stringify(next)); } catch (err) {
+        console.warn('[Portfolio] cache write failed', err);
+      }
       return next;
     });
     const { error } = await supabase.from('holdings').delete().eq('user_id', user.id).eq('symbol', sym);

@@ -14,11 +14,24 @@ function buildCors(origin: string | null) {
 }
 
 // Validation helpers — reject hallucinated/garbage tool args before any DB write.
-function validSymbol(s: any): boolean {
+function validSymbol(s: unknown): boolean {
   return typeof s === 'string' && /^[A-Z0-9.\-^=]{1,20}$/.test(s.toUpperCase());
 }
-function validatePositiveNum(v: any, max = 1e12): boolean {
+function validatePositiveNum(v: unknown, max = 1e12): boolean {
   return typeof v === 'number' && isFinite(v) && v > 0 && v <= max;
+}
+
+async function fetchFinnhubQuote(symbol: string): Promise<Record<string, unknown> | null> {
+  const key = Deno.env.get('FINNHUB_KEY');
+  if (!key) return null;
+  try {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const j = await res.json() as { c?: number; d?: number; dp?: number; h?: number; l?: number; o?: number; pc?: number };
+    if (typeof j.c !== 'number' || j.c === 0) return null;
+    return { symbol, name: symbol, price: j.c, change: j.d ?? 0, changePercent: j.dp ?? 0, high: j.h, low: j.l, open: j.o, prevClose: j.pc };
+  } catch { return null; }
 }
 
 const tools = [
@@ -188,42 +201,74 @@ async function executeTool(name: string, args: Record<string, any>, userId: stri
     if (name === 'get_stock_quote') {
       const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(args.symbol)}&fields=regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketVolume,marketCap,shortName,currency,fiftyTwoWeekHigh,fiftyTwoWeekLow,trailingPE,epsTrailingTwelveMonths,dividendYield`;
       const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (!res.ok) return JSON.stringify({ error: 'Quote lookup failed' });
-      const data = await res.json();
-      const q = data.quoteResponse?.result?.[0];
-      if (!q) return JSON.stringify({ error: `No data found for ${args.symbol}` });
-      return JSON.stringify({
-        symbol: q.symbol, name: q.shortName, price: q.regularMarketPrice,
-        change: q.regularMarketChange, changePercent: q.regularMarketChangePercent,
-        volume: q.regularMarketVolume, marketCap: q.marketCap, currency: q.currency,
-        high52w: q.fiftyTwoWeekHigh, low52w: q.fiftyTwoWeekLow,
-        pe: q.trailingPE, eps: q.epsTrailingTwelveMonths, dividendYield: q.dividendYield,
-      });
+      if (res.ok) {
+        const data = await res.json();
+        const q = data.quoteResponse?.result?.[0];
+        if (q) {
+          return JSON.stringify({
+            symbol: q.symbol, name: q.shortName, price: q.regularMarketPrice,
+            change: q.regularMarketChange, changePercent: q.regularMarketChangePercent,
+            volume: q.regularMarketVolume, marketCap: q.marketCap, currency: q.currency,
+            high52w: q.fiftyTwoWeekHigh, low52w: q.fiftyTwoWeekLow,
+            pe: q.trailingPE, eps: q.epsTrailingTwelveMonths, dividendYield: q.dividendYield,
+          });
+        }
+      }
+      const fb = await fetchFinnhubQuote(args.symbol);
+      if (fb) return JSON.stringify(fb);
+      return JSON.stringify({ error: `No data found for ${args.symbol}` });
     }
 
     if (name === 'get_market_news') {
       const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(args.query)}&quotesCount=0&newsCount=8`;
       const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (!res.ok) return JSON.stringify({ error: 'News fetch failed' });
-      const data = await res.json();
-      const news = (data.news || []).slice(0, 5).map((n: any) => ({
-        title: n.title, publisher: n.publisher, link: n.link,
-        date: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toISOString().split('T')[0] : '',
-      }));
-      return JSON.stringify({ news });
+      if (res.ok) {
+        const data = await res.json();
+        const news = (data.news || []).slice(0, 5).map((n: { title:string; publisher:string; link:string; providerPublishTime?:number }) => ({
+          title: n.title, publisher: n.publisher, link: n.link,
+          date: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toISOString().split('T')[0] : '',
+        }));
+        if (news.length > 0) return JSON.stringify({ news });
+      }
+      // Fallback Finnhub general news
+      const key = Deno.env.get('FINNHUB_KEY');
+      if (key) {
+        try {
+          const fbRes = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${key}`);
+          if (fbRes.ok) {
+            const j = await fbRes.json() as Array<{ headline:string; source:string; url:string; datetime:number }>;
+            const news = j.slice(0,5).map(n => ({ title: n.headline, publisher: n.source, link: n.url, date: n.datetime ? new Date(n.datetime*1000).toISOString().split('T')[0] : '' }));
+            return JSON.stringify({ news });
+          }
+        } catch { /* ignore */ }
+      }
+      return JSON.stringify({ error: 'News fetch failed' });
     }
 
     if (name === 'search_assets') {
       const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(args.query)}&quotesCount=15&newsCount=0`;
       const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (!res.ok) return JSON.stringify({ error: 'Search failed' });
-      const data = await res.json();
-      const results = (data.quotes || []).map((q: any) => ({
-        symbol: q.symbol, name: q.shortname || q.longname || q.symbol,
-        exchange: q.exchDisp || q.exchange, type: q.quoteType,
-        sector: q.sector || '', industry: q.industry || '',
-      }));
-      return JSON.stringify({ results });
+      if (res.ok) {
+        const data = await res.json();
+        const results = (data.quotes || []).map((q: { symbol:string; shortname?:string; longname?:string; exchDisp?:string; exchange?:string; quoteType?:string; sector?:string; industry?:string }) => ({
+          symbol: q.symbol, name: q.shortname || q.longname || q.symbol,
+          exchange: q.exchDisp || q.exchange, type: q.quoteType,
+          sector: q.sector || '', industry: q.industry || '',
+        }));
+        if (results.length > 0) return JSON.stringify({ results });
+      }
+      const fbKey = Deno.env.get('FINNHUB_KEY');
+      if (fbKey) {
+        try {
+          const fbRes = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(args.query)}&token=${fbKey}`);
+          if (fbRes.ok) {
+            const j = await fbRes.json() as { result?: Array<{ symbol:string; description:string; type:string; displaySymbol?:string }> };
+            const results = (j.result || []).slice(0,15).map(r => ({ symbol: r.symbol, name: r.description || r.symbol, exchange: r.displaySymbol || '', type: r.type, sector: '', industry: '' }));
+            return JSON.stringify({ results });
+          }
+        } catch { /* ignore */ }
+      }
+      return JSON.stringify({ error: 'Search failed' });
     }
 
     if (name === 'add_holding') {

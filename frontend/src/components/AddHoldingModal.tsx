@@ -164,7 +164,7 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
                   try {
                     const q = await marketApi.getQuotes([sym]);
                     if (q[sym]) setForm(f => ({ ...f, price: String(q[sym].price.toFixed(2)) }));
-                  } catch {}
+                  } catch (err) { console.warn('[AddHolding] quote fetch failed', err); }
                 }}
                 placeholder="Search any stock, ETF, crypto..."
                 size="sm"
@@ -219,7 +219,7 @@ export default function AddHoldingModal({ open, onClose }: AddHoldingModalProps)
                   try {
                     const q = await marketApi.getQuotes([sym]);
                     if (q[sym]) setForm(f => ({ ...f, price: String(q[sym].price.toFixed(2)) }));
-                  } catch {}
+                  } catch (err) { console.warn('[AddHolding] quote fetch failed', err); }
                 }}
                 placeholder="Search BTC, ETH, SOL..."
                 size="sm"

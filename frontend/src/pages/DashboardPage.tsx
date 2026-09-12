@@ -13,15 +13,18 @@ const TIMEFRAMES = [
 
 export default function DashboardPage({ onAddHolding }: { onAddHolding: () => void }) {
   const { holdings } = usePortfolio();
-  const { prices, allAssets, lastUpdate } = useRealtimeMarket();
+  const { prices, allAssets, isLive } = useRealtimeMarket();
   const [timeframe, setTimeframe] = useState('3M');
   const n = holdings.length;
 
-  // Use real-time prices for holdings
+  // Use real-time prices for holdings — mark stale when no live quote
   const enrichedHoldings = holdings.map(h => {
-    const livePrice = prices[h.sym]?.price || h.price;
-    return { ...h, price: livePrice };
+    const live = prices[h.sym];
+    const isStale = !live;
+    const livePrice = live?.price ?? h.price;
+    return { ...h, price: livePrice, isStale };
   });
+  const staleCount = enrichedHoldings.filter(h => (h as { isStale?: boolean }).isStale).length;
 
   const totalVal = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.price, 0) : 0;
   const totalCost = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.cost, 0) : 0;
@@ -47,7 +50,7 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
     if (!n) return [];
     const now = new Date();
     return [{ date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: totalVal }];
-  }, [n, totalVal, selectedDays]);
+  }, [n, totalVal]);
 
   const allocData = useMemo(() => {
     if (!n) return [];
@@ -75,6 +78,11 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
 
   return (
     <div className="space-y-3.5">
+      {!isLive && (
+        <div className="text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+          ⚠️ Live market data unavailable — showing cached/demo prices. Data may be delayed.
+        </div>
+      )}
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map(s => (
@@ -228,6 +236,7 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-[15px] py-3 border-b border-border flex items-center">
             <span className="font-display text-[13px] font-bold">Holdings</span>
+            {staleCount > 0 && <span className="ml-2 text-[9px] text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">{staleCount} stale price(s)</span>}
             <span className="text-[10px] text-muted-foreground ml-auto">{n} position{n !== 1 ? 's' : ''}</span>
           </div>
           <div>
@@ -254,7 +263,10 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
                               <div><div className="text-[13px] font-semibold text-foreground">{h.sym}</div><div className="text-[10px] text-muted-foreground font-mono">{h.name}</div></div>
                             </div>
                           </td>
-                          <td className={`text-right p-[10px] px-[11px] font-mono tabular-nums ${flash}`}>${h.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className={`text-right p-[10px] px-[11px] font-mono tabular-nums ${flash}`}>
+                            ${h.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            {(h as { isStale?: boolean }).isStale && <span className="ml-1 text-[9px] text-amber-600 bg-amber-500/10 px-1 py-0.5 rounded">stale</span>}
+                          </td>
                           <td className="text-right p-[10px] px-[11px] font-mono tabular-nums">{formatMoney(mv)}</td>
                           <td className="text-right p-[10px] px-[11px]">
                             <span className={`font-mono text-[10px] font-semibold px-[7px] py-0.5 rounded-md tabular-nums ${up ? 'text-primary bg-primary/10' : 'text-destructive bg-destructive/10'}`}>{formatPct(pct)}</span>

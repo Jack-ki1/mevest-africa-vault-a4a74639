@@ -1,0 +1,27 @@
+name: Supabase Keepalive & Snapshot
+
+on:
+  schedule:
+    - cron: '0 6 */2 * *'  # every 2 days at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Auth Health
+        run: |
+          curl -s -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" "${{ secrets.VITE_SUPABASE_URL }}/auth/v1/health" | grep -q "GoTrue" || exit 1
+          echo "Supabase health OK"
+
+      - name: Trigger portfolio-snapshot
+        if: ${{ secrets.CRON_SECRET != '' }}
+        run: |
+          curl -s -X POST "${{ secrets.VITE_SUPABASE_URL }}/functions/v1/portfolio-snapshot" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{}' || echo "snapshot trigger attempted"
+
+      - name: Skipped snapshot (no CRON_SECRET)
+        if: ${{ secrets.CRON_SECRET == '' }}
+        run: echo "CRON_SECRET not set — skipping snapshot trigger (set in Supabase secrets and GitHub repo secrets)"

@@ -22,6 +22,9 @@ export interface MarketAsset {
   beta?: number;
 }
 
+// MARKET is a legacy static fallback. Canonical live/fallback prices live in
+// RealtimeMarketContext.tsx BUILTIN_ASSETS. Keep values in sync — KCB/SCOM/EQTY
+// aligned to BUILTIN_ASSETS. Future: delete MARKET and use a schema-only asset list.
 export const MARKET: Record<string, MarketAsset> = {
   AAPL: { name:'Apple Inc.', price:213.42, chg:1.83, chgPct:0.87, type:'stock', mktcap:'3.31T', vol:'58.2M', rsi:58.2, pe:28.4, sector:'Technology', signal:'neutral', cap:'mega', dividend:0.96, divYield:0.45, analystRating:'buy', priceTarget:235, fairValue:220, morningstarRating:4, eps:6.57, revenue:'383B', beta:1.21 },
   MSFT: { name:'Microsoft', price:415.80, chg:5.10, chgPct:1.24, type:'stock', mktcap:'3.09T', vol:'18.4M', rsi:62.1, pe:35.1, sector:'Technology', signal:'bullish', cap:'mega', dividend:3.00, divYield:0.72, analystRating:'strong_buy', priceTarget:480, fairValue:440, morningstarRating:5, eps:11.86, revenue:'227B', beta:0.89 },
@@ -44,7 +47,7 @@ export const MARKET: Record<string, MarketAsset> = {
   US10Y: { name:'US 10Y Treasury', price:96.80, chg:-0.12, chgPct:-0.12, type:'bond', mktcap:'—', vol:'—', rsi:'—', pe:'—', sector:'Government', signal:'neutral', cap:'—' },
   SCOM: { name:'Safaricom PLC', price:28.50, chg:0.75, chgPct:2.70, type:'stock', mktcap:'1.14T KES', vol:'12.4M', rsi:54.8, pe:14.2, sector:'Telecom', signal:'bullish', cap:'large', dividend:1.44, divYield:5.05, analystRating:'buy', priceTarget:32, fairValue:30, morningstarRating:4, eps:2.01, revenue:'308B KES', beta:0.72 },
   EQTY: { name:'Equity Group', price:52.25, chg:1.25, chgPct:2.45, type:'stock', mktcap:'197B KES', vol:'3.8M', rsi:58.2, pe:6.8, sector:'Finance', signal:'bullish', cap:'mid', dividend:4.00, divYield:7.66, analystRating:'strong_buy', priceTarget:62, fairValue:58, morningstarRating:5, eps:7.68, revenue:'142B KES', beta:0.85 },
-  KCB: { name:'KCB Group', price:38.90, chg:0.60, chgPct:1.57, type:'stock', mktcap:'124B KES', vol:'2.1M', rsi:52.4, pe:5.2, sector:'Finance', signal:'neutral', cap:'mid', dividend:2.50, divYield:6.43, analystRating:'buy', priceTarget:45, fairValue:42, morningstarRating:4, eps:7.48, revenue:'118B KES', beta:0.78 },
+  KCB: { name:'KCB Group', price:42.10, chg:0.85, chgPct:2.06, type:'stock', mktcap:'135B KES', vol:'2.1M', rsi:52.4, pe:5.2, sector:'Finance', signal:'neutral', cap:'mid', dividend:2.50, divYield:6.43, analystRating:'buy', priceTarget:45, fairValue:42, morningstarRating:4, eps:7.48, revenue:'118B KES', beta:0.78 },
 };
 
 // Sector heatmap data

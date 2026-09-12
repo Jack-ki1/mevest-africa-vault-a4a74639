@@ -32,8 +32,9 @@ export default function AiInsightsPanel() {
 
       if (error) throw error;
       setInsights(data);
-    } catch (e: any) {
-      toast({ title: 'AI Analysis Failed', description: e.message || 'Could not analyze portfolio', variant: 'destructive' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: 'AI Analysis Failed', description: msg || 'Could not analyze portfolio', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

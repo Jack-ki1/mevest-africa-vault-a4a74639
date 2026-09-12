@@ -108,10 +108,10 @@ export default function AiChatWidget() {
           const json = line.slice(6).trim();
           if (json === '[DONE]') break;
           try {
-            const p = JSON.parse(json);
+            const p = JSON.parse(json) as { choices?: Array<{ delta?: { content?: string } }> };
             const c = p.choices?.[0]?.delta?.content;
             if (c) upsert(c);
-          } catch { /* partial */ }
+          } catch (err) { console.warn('[AI] chunk parse failed', err); }
         }
       }
 
@@ -121,9 +121,9 @@ export default function AiChatWidget() {
           const json = raw.slice(6).trim();
           if (json === '[DONE]') continue;
           try {
-            const c = JSON.parse(json).choices?.[0]?.delta?.content;
+            const c = (JSON.parse(json) as { choices?: Array<{ delta?: { content?: string } }> }).choices?.[0]?.delta?.content;
             if (c) upsert(c);
-          } catch {}
+          } catch (err) { console.warn('[AI] buffer parse failed', err); }
         }
       }
 
@@ -132,8 +132,9 @@ export default function AiChatWidget() {
         // Dispatch a custom event to trigger context refreshes
         window.dispatchEvent(new CustomEvent('mevest-data-changed'));
       }
-    } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${e.message || 'Something went wrong. Please try again.'}` }]);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setMessages(prev => [...prev, { role: 'assistant', content: `⚠️ ${msg || 'Something went wrong. Please try again.'}` }]);
     } finally {
       setLoading(false);
       setToolStatus(null);

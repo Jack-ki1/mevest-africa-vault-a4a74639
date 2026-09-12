@@ -274,11 +274,12 @@ VITE_SUPABASE_URL="http://localhost:54321"
 VITE_SUPABASE_ANON_KEY="<anon from status>"
 VITE_SUPABASE_PUBLISHABLE_KEY="<anon from status>"
 VITE_SUPABASE_PROJECT_ID="fulgofnlmlmetlgidhup"
-VITE_ADMIN_EMAIL="admin@mevest.africa"
-VITE_ADMIN_PASSWORD="MevestAdmin@2026"
+# Optional demo bypass — only if you set BOTH vars (no default baked into build):
+# VITE_ADMIN_EMAIL="admin@example.com"
+# VITE_ADMIN_PASSWORD="your-strong-random-password-here"
 ENV
 npm run dev  # http://localhost:8080 — now hits local DB; Inbucket catches emails at http://localhost:54324
-# Auth → sign up → Inbucket → click confirm link → login; or use admin bypass admin@mevest.africa / MevestAdmin@2026
+# Auth → sign up → Inbucket → click confirm link → login; or use admin bypass if you configured VITE_ADMIN_* above
 ```
 
 **Switch back to hosted:**

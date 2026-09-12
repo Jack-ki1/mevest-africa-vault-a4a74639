@@ -14,12 +14,15 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
   const { prices } = useRealtimeMarket();
   const [filter, setFilter] = useState('all');
 
-  // Enrich with live prices
+  // Enrich with live prices — track stale vs live
   const enrichedHoldings = holdings.map(h => {
-    const livePrice = prices[h.sym]?.price || h.price;
-    const prevPrice = prices[h.sym]?.prevPrice || livePrice;
-    return { ...h, price: livePrice, prevPrice };
+    const live = prices[h.sym];
+    const isStale = !live;
+    const livePrice = live?.price ?? h.price;
+    const prevPrice = live?.prevPrice ?? livePrice;
+    return { ...h, price: livePrice, prevPrice, isStale };
   });
+  const staleCount = enrichedHoldings.filter(h => h.isStale).length;
 
   const n = enrichedHoldings.length;
   const totalVal = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.price, 0) : 0;
@@ -82,7 +85,14 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
             <div className="font-display text-[19px] font-extrabold tracking-tight">My Portfolio</div>
             {n > 0 && <div className="flex items-center gap-1 text-[9px] font-bold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full"><Zap className="w-2.5 h-2.5 fill-primary" />LIVE</div>}
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">{n ? `${n} positions · Prices update in real-time` : 'Add holdings to get started'}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {n ? (
+              <>
+                {n} positions · Prices update in real-time
+                {staleCount > 0 && <span className="ml-2 text-amber-600 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded text-[10px]">{staleCount} price unavailable — showing cost basis</span>}
+              </>
+            ) : 'Add holdings to get started'}
+          </div>
         </div>
         <div className="flex gap-2">
           <button onClick={exportCSV} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ CSV</button>
@@ -148,7 +158,10 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
                       <td className="p-[10px] px-[11px]"><span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground border border-border/50 uppercase">{h.type}</span></td>
                       <td className="text-right p-[10px] px-[11px] font-mono tabular-nums">{h.shares < 1 ? h.shares.toFixed(4) : h.shares}</td>
                       <td className="text-right p-[10px] px-[11px] font-mono tabular-nums">${h.cost.toLocaleString()}</td>
-                      <td className={`text-right p-[10px] px-[11px] font-mono tabular-nums ${flash}`}>${h.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className={`text-right p-[10px] px-[11px] font-mono tabular-nums ${flash}`}>
+                        ${h.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {h.isStale && <span className="ml-1 text-[9px] text-amber-600 bg-amber-500/10 px-1 py-0.5 rounded">stale</span>}
+                      </td>
                       <td className="text-right p-[10px] px-[11px] font-mono font-semibold tabular-nums">{formatMoney(mv)}</td>
                       <td className="text-right p-[10px] px-[11px]"><span className={`font-mono text-[11px] tabular-nums ${up ? 'text-primary' : 'text-destructive'}`}>{up ? '+' : ''}{formatMoney(pl)}</span></td>
                       <td className="text-right p-[10px] px-[11px]"><span className={`font-mono text-[10px] font-bold px-[7px] py-0.5 rounded-md tabular-nums ${up ? 'text-primary bg-primary/10' : 'text-destructive bg-destructive/10'}`}>{formatPct(pct)}</span></td>

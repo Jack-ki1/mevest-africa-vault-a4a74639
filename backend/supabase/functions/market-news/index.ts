@@ -24,6 +24,42 @@ function getSentiment(title: string): 'positive' | 'negative' | 'neutral' {
   return 'neutral';
 }
 
+async function fetchFinnhubNews(category: string, tickers?: string[]): Promise<{ trending: string[]; news: Array<{ title:string; publisher:string; link:string; publishedAt:string; thumbnail:string; relatedTickers:string[]; sentiment:string; readTime:number }> }> {
+  const key = Deno.env.get('FINNHUB_KEY');
+  if (!key) return { trending: [], news: [] };
+  try {
+    let url = '';
+    if (tickers && tickers.length > 0) {
+      const sym = tickers[0];
+      const from = new Date(Date.now() - 7*24*3600*1000).toISOString().slice(0,10);
+      const to = new Date().toISOString().slice(0,10);
+      url = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(sym)}&from=${from}&to=${to}&token=${key}`;
+    } else {
+      const catMap: Record<string,string> = { general:'general', technology:'technology', business:'business', crypto:'crypto', forex:'forex' };
+      const cat = catMap[category] || 'general';
+      url = `https://finnhub.io/api/v1/news?category=${cat}&token=${key}`;
+    }
+    const res = await fetch(url);
+    if (!res.ok) return { trending: [], news: [] };
+    const j = await res.json() as Array<{ headline?:string; source?:string; url?:string; datetime?:number; image?:string; related?:string; summary?:string }>;
+    const news = (j || []).slice(0,20).map(n => {
+      const title = n.headline || '';
+      const wc = title.split(/\s+/).length;
+      return {
+        title,
+        publisher: n.source || '',
+        link: n.url || '',
+        publishedAt: n.datetime ? new Date(n.datetime*1000).toISOString() : '',
+        thumbnail: n.image || '',
+        relatedTickers: n.related ? n.related.split(',') : [],
+        sentiment: getSentiment(title),
+        readTime: Math.max(1, Math.ceil(wc/200)),
+      };
+    });
+    return { trending: [], news };
+  } catch { return { trending: [], news: [] }; }
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = buildCors(req);
   if (req.method === 'OPTIONS') {
@@ -55,9 +91,9 @@ Deno.serve(async (req) => {
     const newsData = newsRes.ok ? await newsRes.json() : { news: [] };
 
     const trendingSymbols = (trending.finance?.result?.[0]?.quotes || [])
-      .map((q: any) => q.symbol).slice(0, 10);
+      .map((q: { symbol:string }) => q.symbol).slice(0, 10);
 
-    const news = (newsData.news || []).map((n: any) => {
+    let news = (newsData.news || []).map((n: { title?:string; publisher?:string; link?:string; providerPublishTime?:number; thumbnail?:{ resolutions?:Array<{url:string}> }; relatedTickers?:string[] }) => {
       const title = n.title || '';
       const wordCount = title.split(/\s+/).length;
       return {
@@ -71,6 +107,14 @@ Deno.serve(async (req) => {
         readTime: Math.max(1, Math.ceil(wordCount / 200)),
       };
     });
+
+    // Fallback to Finnhub if Yahoo returned no news
+    if (news.length === 0) {
+      const fb = await fetchFinnhubNews(category as string, tickers as string[]);
+      if (fb.news.length > 0) {
+        news = fb.news;
+      }
+    }
 
     return new Response(JSON.stringify({ trending: trendingSymbols, news }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

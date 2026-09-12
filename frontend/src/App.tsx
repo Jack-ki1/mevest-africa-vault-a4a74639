@@ -8,10 +8,30 @@ import { PortfolioProvider } from "@/context/PortfolioContext";
 import { WatchlistProvider } from "@/context/WatchlistContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { RealtimeMarketProvider } from "@/context/RealtimeMarketContext";
+import React, { Suspense, lazy } from "react";
+import { Navigate } from "react-router-dom";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const MarketsPage = lazy(() => import("./pages/MarketsPage"));
+const ScreenerPage = lazy(() => import("./pages/ScreenerPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
+const NewsFeedPage = lazy(() => import("./pages/NewsFeedPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+
+function LazyFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient();
 
@@ -38,11 +58,24 @@ function AppRoutes() {
   return (
     <PortfolioProvider>
       <WatchlistProvider>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<LazyFallback />}>
+          <Routes>
+            <Route path="/" element={<Index />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage onAddHolding={() => window.dispatchEvent(new CustomEvent('mevest-open-add-holding'))} />} />
+              <Route path="portfolio" element={<PortfolioPage onAddHolding={() => window.dispatchEvent(new CustomEvent('mevest-open-add-holding'))} />} />
+              <Route path="analytics" element={<AnalyticsPage />} />
+              <Route path="markets" element={<MarketsPage />} />
+              <Route path="screener" element={<ScreenerPage onNavigate={(p, s) => window.dispatchEvent(new CustomEvent('mevest-navigate', { detail: { page: p, sym: s } }))} />} />
+              <Route path="calendar" element={<CalendarPage />} />
+              <Route path="watchlist" element={<WatchlistPage onNavigate={(p, s) => window.dispatchEvent(new CustomEvent('mevest-navigate', { detail: { page: p, sym: s } }))} />} />
+              <Route path="news" element={<NewsFeedPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </WatchlistProvider>
     </PortfolioProvider>
   );

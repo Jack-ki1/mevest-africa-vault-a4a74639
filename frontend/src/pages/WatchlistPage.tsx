@@ -41,7 +41,7 @@ export default function WatchlistPage({ onNavigate }: WatchlistPageProps) {
           pe: marketAsset?.pe,
         };
       })
-      .filter(Boolean) as any[];
+      .filter(Boolean) as Array<NonNullable<ReturnType<typeof getAsset>> & { price: number; chgPct: number; chg: number; prevPrice: number }>;
   }, [watchlist, prices, getAsset]);
 
   return (
@@ -119,7 +119,8 @@ export default function WatchlistPage({ onNavigate }: WatchlistPageProps) {
   );
 }
 
-function WatchlistCard({ asset, onRemove, onNavigate }: { asset: any; onRemove: () => void; onNavigate?: (page: string, sym?: string) => void }) {
+interface WatchlistAsset { sym: string; name: string; price: number; chgPct: number; chg: number; prevPrice: number; mktcap?: string; sector?: string; exchange?: string; type?: string; priceTarget?: number; analystRating?: string; morningstarRating?: number; signal?: string; rsi?: number | string; pe?: number | string; }
+function WatchlistCard({ asset, onRemove, onNavigate }: { asset: WatchlistAsset; onRemove: () => void; onNavigate?: (page: string, sym?: string) => void }) {
   const sparkData = useMemo(() => {
     const data = genLine(asset.price * 0.92, 30, asset.chgPct >= 0 ? 0.003 : -0.003, 0.012);
     return data.map((v, i) => ({ i, v }));

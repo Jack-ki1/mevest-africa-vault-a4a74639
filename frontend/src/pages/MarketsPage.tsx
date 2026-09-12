@@ -8,6 +8,7 @@ import {
   CartesianGrid, ComposedChart, Line,
 } from 'recharts';
 import { TrendingUp, BarChart3, Grid3X3, Wifi, Globe, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const TABS = [
   { id: 'charts', label: 'Charts', icon: TrendingUp },
@@ -27,6 +28,9 @@ const RANGES = [
 const MW_TABS = ['us', 'crypto', 'africa', 'europe', 'commodities', 'bonds'] as const;
 
 export default function MarketsPage({ initialSymbol }: { initialSymbol?: string }) {
+  const location = useLocation();
+  const stateSymbol = (location.state as { symbol?: string } | null)?.symbol;
+  const resolvedInitial = initialSymbol ?? stateSymbol ?? 'AAPL';
   const [activeTab, setActiveTab] = useState<string>('charts');
   const { prices, allAssets, isLive } = useRealtimeMarket();
 
@@ -57,7 +61,7 @@ export default function MarketsPage({ initialSymbol }: { initialSymbol?: string 
         </div>
       </div>
 
-      {activeTab === 'charts' && <ChartsTab initialSymbol={initialSymbol} />}
+      {activeTab === 'charts' && <ChartsTab initialSymbol={resolvedInitial} />}
       {activeTab === 'heatmap' && <HeatmapTab />}
       {activeTab === 'marketwatch' && <MarketWatchTab />}
     </div>
@@ -66,7 +70,10 @@ export default function MarketsPage({ initialSymbol }: { initialSymbol?: string 
 
 /* ───── CHARTS TAB ───── */
 function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
-  const [symbol, setSymbol] = useState(initialSymbol || 'AAPL');
+  const location = useLocation();
+  const stateSym = (location.state as { symbol?: string } | null)?.symbol;
+  const resolved = initialSymbol ?? stateSym ?? 'AAPL';
+  const [symbol, setSymbol] = useState(resolved);
   const [rangeIdx, setRangeIdx] = useState(2); // 1M
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [quote, setQuote] = useState<QuoteData | null>(null);
@@ -306,21 +313,20 @@ function HeatmapTab() {
   );
 }
 
+const REGION_SYMBOLS: Record<string, string[]> = {
+  us: ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', 'AAPL'],
+  crypto: ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD'],
+  africa: ['SCOM.NR', 'EQTY.NR', 'KCB.NR', '^J203.JO', 'NGXGROUP.LG'],
+  europe: ['^FTSE', '^GDAXI', '^FCHI', '^STOXX50E'],
+  commodities: ['GC=F', 'SI=F', 'CL=F', 'BZ=F', 'NG=F', 'HG=F'],
+  bonds: ['^TNX', '^IRX', '^TYX'],
+};
+
 /* ───── MARKET WATCH TAB ───── */
 function MarketWatchTab() {
   const [activeRegion, setActiveRegion] = useState<string>('us');
   const [liveRegionQuotes, setLiveRegionQuotes] = useState<Record<string, QuoteData>>({});
   const { isLive } = useRealtimeMarket();
-
-  // Yahoo Finance symbols for each region
-  const REGION_SYMBOLS: Record<string, string[]> = {
-    us: ['^GSPC', '^IXIC', '^DJI', '^RUT', '^VIX', 'AAPL'],
-    crypto: ['BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD', 'ADA-USD'],
-    africa: ['SCOM.NR', 'EQTY.NR', 'KCB.NR', '^J203.JO', 'NGXGROUP.LG'],
-    europe: ['^FTSE', '^GDAXI', '^FCHI', '^STOXX50E'],
-    commodities: ['GC=F', 'SI=F', 'CL=F', 'BZ=F', 'NG=F', 'HG=F'],
-    bonds: ['^TNX', '^IRX', '^TYX'],
-  };
 
   useEffect(() => {
     const syms = REGION_SYMBOLS[activeRegion] || [];

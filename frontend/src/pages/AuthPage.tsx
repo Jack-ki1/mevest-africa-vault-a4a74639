@@ -79,8 +79,9 @@ export default function AuthPage() {
       if (error) {
         toast({ title: 'Google sign-in failed', description: error.message, variant: 'destructive' });
       }
-    } catch (e: any) {
-      toast({ title: 'Google sign-in failed', description: e.message || 'Something went wrong', variant: 'destructive' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: 'Google sign-in failed', description: msg || 'Something went wrong', variant: 'destructive' });
     } finally {
       setGoogleLoading(false);
     }

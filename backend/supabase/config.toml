@@ -24,7 +24,7 @@ pop3_port = 54326
 
 [functions.ai-insights]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/ai-insights/import_map.json"
 entrypoint = "./functions/ai-insights/index.ts"
 
@@ -52,3 +52,5 @@ entrypoint = "./functions/market-news/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/portfolio-snapshot/index.ts"
+# Secured via x-cron-secret header checked inside the function (CRON_SECRET env).
+# Set with: supabase secrets set CRON_SECRET=$(openssl rand -hex 32)
