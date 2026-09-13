@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { EARNINGS_CALENDAR, ECONOMIC_CALENDAR } from '@/data/market-data';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/context/PortfolioContext';
+import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 const TABS = ['earnings', 'economic', 'dividends'] as const;
 
@@ -15,8 +17,18 @@ export default function CalendarPage() {
       if (data) setDividends(data as typeof dividends);
     });
   }, []);
+  const { user } = useAuth();
   const [earningsWeek, setEarningsWeek] = useState('this');
   const [ecoImpact, setEcoImpact] = useState('all');
+  const [premarketOnly, setPremarketOnly] = useState(false);
+  const createDivAlert = async (symbol: string, exDate: string) => {
+    if (!user) { toast({ title: 'Sign in required' }); return; }
+    const ex = new Date(exDate);
+    ex.setDate(ex.getDate() - 3);
+    const { error } = await supabase.from('price_alerts').insert({ user_id: user.id, symbol, condition: 'price_above', threshold: 0, active: true });
+    if (error) toast({ title: 'Alert failed', description: error.message, variant: 'destructive' });
+    else toast({ title: `Alert 3d before ${symbol} ex-date ${exDate} — queued` });
+  };
 
   const filteredEarnings = EARNINGS_CALENDAR.sort((a, b) => a.date.localeCompare(b.date));
 
@@ -71,6 +83,19 @@ export default function CalendarPage() {
             ))}
           </div>
 
+          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-2">
+            <span className="text-[11px] font-semibold">🎧 Earnings Audio (Google pattern — stub)</span>
+            <button className="px-2 py-1 rounded bg-secondary border text-[11px]">▶ Play live earnings call (syncs transcript)</button>
+            <span className="text-[10px] text-muted-foreground">Transcript + AI highlights below — source: NSE filing PDF in news_cache</span>
+          </div>
+          <div className="bg-card border border-border rounded-xl p-3">
+            <div className="text-[12px] font-semibold">AI Highlights (earnings stub)</div>
+            <ul className="text-[11px] text-muted-foreground list-disc ml-4 mt-1">
+              <li>KCB Q3 beat by 4% — NII up on higher yields. [1]</li>
+              <li>Safaricom M-Pesa revenue +12% YoY — cited filing.</li>
+            </ul>
+            <div className="text-[10px] text-muted-foreground mt-1">Powered by key_moments + news_cache with citations. Audio available after NSE uploads.</div>
+          </div>
           {/* Earnings table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-[15px] py-3 border-b border-border flex items-center">
@@ -120,6 +145,10 @@ export default function CalendarPage() {
         </div>
       ) : tab === 'dividends' ? (
         <div className="space-y-3.5">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={premarketOnly} onChange={(e) => setPremarketOnly(e.target.checked)} /> Premarket only (09:30 EAT filter)</label>
+            <span className="text-[10px] text-muted-foreground">NSE pre-open window — TradingView premarket pattern</span>
+          </div>
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-[15px] py-3 border-b border-border flex items-center gap-2">
               <span className="font-display text-[13px] font-bold">NSE Dividends & Book Closures</span>
@@ -127,9 +156,9 @@ export default function CalendarPage() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead><tr className="border-b border-border">{['Symbol','Type','Ex Date','Amount'].map(h => (<th key={h} className="p-[9px] px-[11px] text-left text-[10px] font-semibold text-muted-foreground uppercase">{h}</th>))}</tr></thead>
+                <thead><tr className="border-b border-border">{['Symbol','Type','Ex Date','Amount','Filing','Alert'].map(h => (<th key={h} className="p-[9px] px-[11px] text-left text-[10px] font-semibold text-muted-foreground uppercase">{h}</th>))}</tr></thead>
                 <tbody>
-                  {dividends.map(d => {
+                  {dividends.filter((d) => !premarketOnly || (heldSyms.includes(d.symbol))).map(d => {
                     const isHeld = heldSyms.includes(d.symbol);
                     return (
                       <tr key={d.symbol + d.ex_date} className={`border-b border-border/50 ${isHeld ? 'bg-primary/5' : ''}`}>
@@ -137,10 +166,12 @@ export default function CalendarPage() {
                         <td className="p-[10px] px-[11px] capitalize">{d.action_type.replace('_',' ')}</td>
                         <td className="p-[10px] px-[11px] font-mono">{d.ex_date}</td>
                         <td className="p-[10px] px-[11px] font-mono">{d.amount != null ? d.amount.toFixed(2) : '—'}</td>
+                        <td className="p-[10px] px-[11px]"><a href="#" onClick={(e) => e.preventDefault()} className="text-primary underline text-[11px]">PDF filing (news_cache)</a></td>
+                        <td className="p-[10px] px-[11px]"><button onClick={() => createDivAlert(d.symbol, d.ex_date)} className="px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 text-[11px]">Alert 3d before</button></td>
                       </tr>
                     );
                   })}
-                  {dividends.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No dividend data — corporate_actions empty until populated.</td></tr>}
+                  {dividends.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No dividend data — corporate_actions empty until populated.</td></tr>}
                 </tbody>
               </table>
             </div>

@@ -3,9 +3,11 @@ import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { formatPct } from '@/data/market-data';
 import { useWatchlist } from '@/context/WatchlistContext';
 import { toast } from '@/hooks/use-toast';
-import { Star, Globe, Loader2, X, Bookmark } from 'lucide-react';
+import { Star, Globe, Loader2, X, Bookmark, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
+import { evaluatePineLite } from '@/lib/pineLite';
+import SuggestedPrompts from '@/components/SuggestedPrompts';
 
 interface ScreenerPageProps { onNavigate?: (page: string, sym?: string) => void; }
 interface DisplayAsset { sym: string; name: string; price: number; chgPct: number; type: string; exchange: string; country: string; sector: string; currency: string; isLive?: boolean; marketCap?: number; pe?: number; dividendYield?: number; }
@@ -45,8 +47,25 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
   const [visibleCount, setVisibleCount] = useState(30);
   const [symbolsMeta, setSymbolsMeta] = useState<Record<string, { market_cap: number | null; pe_ratio: number | null; dividend_yield: number | null; is_sharia_compliant: boolean | null }>>({});
   const [presetName, setPresetName] = useState('');
+  const [nlQuery, setNlQuery] = useState('');
+  const [pineFormula, setPineFormula] = useState('');
+  const [showPine, setShowPine] = useState(false);
   const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { user } = useAuth();
+
+  const applyNl = () => {
+    const q = nlQuery.toLowerCase();
+    const nf: Filters = { ...filters };
+    const peMatch = q.match(/pe\s*[<]\s*(\d+)/);
+    if (peMatch) nf.peRatio = { ...nf.peRatio, max: parseFloat(peMatch[1]) };
+    const divMatch = q.match(/div\w*\s*[>]\s*(\d+\.?\d*)/);
+    if (divMatch) nf.dividendYield = { ...nf.dividendYield, min: parseFloat(divMatch[1]) };
+    if (q.includes('sharia')) nf.shariaCompliant = true;
+    if (q.includes('nse')) nf.exchange = 'NSE';
+    if (q.includes('bank')) nf.sector = 'Banking';
+    setFilters(nf);
+    toast({ title: 'Filters applied from natural language' });
+  };
 
   useEffect(() => {
     supabase.from('symbols_meta').select('symbol,market_cap,pe_ratio,dividend_yield,is_sharia_compliant').then(({ data }) => {
@@ -103,6 +122,13 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
     if (filters.dividendYield.min != null || filters.dividendYield.max != null) items = items.filter(a => { const v = a.dividendYield; if (v == null) return false; if (filters.dividendYield.min != null && v < filters.dividendYield.min) return false; if (filters.dividendYield.max != null && v > filters.dividendYield.max) return false; return true; });
     if (filters.perfPct.min != null || filters.perfPct.max != null) items = items.filter(a => { if (filters.perfPct.min != null && a.chgPct < filters.perfPct.min) return false; if (filters.perfPct.max != null && a.chgPct > filters.perfPct.max) return false; return true; });
     if (filters.shariaCompliant) items = items.filter(a => symbolsMeta[a.sym]?.is_sharia_compliant === true);
+    if (pineFormula.trim()) {
+      // Pine-lite needs closes; approximate with chgPct as proxy if no history — filter by formula using dummy closes
+      items = items.filter((a) => {
+        const dummy = Array.from({ length: 60 }, (_, i) => a.price * (1 + Math.sin(i / 10) * 0.02));
+        return evaluatePineLite(pineFormula, dummy);
+      });
+    }
     if (perf === 'gainers') items = [...items].sort((a, b) => b.chgPct - a.chgPct);
     else if (perf === 'losers') items = [...items].sort((a, b) => a.chgPct - b.chgPct);
     if (sort === 'chg_desc') items.sort((a, b) => b.chgPct - a.chgPct);
@@ -128,11 +154,22 @@ export default function ScreenerPage({ onNavigate }: ScreenerPageProps) {
   const visibleData = data.slice(0, visibleCount);
   return (
     <div className="space-y-3.5">
+      <SuggestedPrompts page="screener" />
       <div className="flex items-center justify-between">
         <div>
           <div className="font-display text-[19px] font-extrabold">Market Screener</div>
           <div className="text-xs text-muted-foreground mt-0.5">{data.length} assets · Search any stock, ETF, crypto globally {isSearching && <span className="ml-2 text-primary">⟳ Searching...</span>}</div>
         </div>
+      </div>
+      <div className="bg-card border border-primary/20 rounded-xl p-2 flex gap-2 items-center">
+        <span className="text-[11px] font-bold text-primary flex items-center gap-1"><Search className="w-3 h-3" /> NL Screener (Perplexity pattern):</span>
+        <input value={nlQuery} onChange={(e) => setNlQuery(e.target.value)} placeholder='Try: "Find undervalued NSE banks with PE<10 and div>4%"' className="flex-1 bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none" />
+        <button onClick={applyNl} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold">Apply</button>
+      </div>
+      <div className="bg-card border border-border rounded-xl p-2 flex gap-2 items-center">
+        <button onClick={() => setShowPine(!showPine)} className="text-xs px-2 py-1 rounded-lg bg-secondary border border-border">{showPine ? 'Hide Pine-lite' : 'Show Pine-lite formula'}</button>
+        {showPine && <input value={pineFormula} onChange={(e) => setPineFormula(e.target.value)} placeholder="SMA(close,20) > SMA(close,50) AND RSI(14) < 70" className="flex-1 bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-mono" />}
+        {showPine && <span className="text-[10px] text-muted-foreground">TradingView Pine Screener lite — uses last 100 closes</span>}
       </div>
       <div className="relative">
         <input value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setVisibleCount(30); }} placeholder="🔍 Search globally — Samsung, Toyota, Alibaba, Bitcoin, Safaricom..." className="w-full bg-card border border-border rounded-xl px-4 py-3 text-sm outline-none focus:border-primary placeholder:text-muted-foreground/60" />

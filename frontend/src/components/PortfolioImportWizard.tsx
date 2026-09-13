@@ -55,13 +55,30 @@ export default function PortfolioImportWizard({ open, onClose }: { open: boolean
     else handleImage(f);
   };
 
+  const [nlInput, setNlInput] = useState('');
+  const handleNl = () => {
+    // Simple nat-lang parse: "20 SCOM at 28 KES, 5 EQTY at 52"
+    const parts = nlInput.split(/[,;]+/);
+    const parsed: ParsedRow[] = [];
+    for (const p of parts) {
+      const m = p.match(/(\d+\.?\d*)\s+([A-Za-z.-]+)\s+at\s+(\d+\.?\d*)/i);
+      if (m) parsed.push({ symbol: m[2].toUpperCase(), shares: parseFloat(m[1]), cost_basis: parseFloat(m[3]), currency: p.toLowerCase().includes('kes') ? 'KES' : 'USD' });
+      else {
+        const m2 = p.match(/([A-Za-z.-]+)\s+(\d+\.?\d*)\s*[x@]\s*(\d+\.?\d*)/i);
+        if (m2) parsed.push({ symbol: m2[1].toUpperCase(), shares: parseFloat(m2[2]), cost_basis: parseFloat(m2[3]), currency: 'KES' });
+      }
+    }
+    if (!parsed.length) toast({ title: 'Could not parse — try "20 SCOM at 28 KES, 5 EQTY at 52"' });
+    else setRows((prev) => [...prev, ...parsed]);
+  };
+
   const confirm = async () => {
     for (const r of rows) {
       if (!r.symbol || r.shares == null || r.cost_basis == null) continue;
       addHolding({ sym: r.symbol, name: r.symbol, type: 'stock', shares: r.shares, cost: r.cost_basis });
     }
     toast({ title: `${rows.length} holdings imported — please verify prices` });
-    setRows([]); setFileName(''); onClose();
+    setRows([]); setFileName(''); setNlInput(''); onClose();
   };
 
   if (!open) return null;
@@ -69,7 +86,11 @@ export default function PortfolioImportWizard({ open, onClose }: { open: boolean
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
       <div className="bg-card border border-border rounded-xl w-[560px] max-h-[80vh] overflow-auto p-4" onClick={e => e.stopPropagation()}>
         <div className="font-semibold mb-1">Import Portfolio</div>
-        <div className="text-xs text-muted-foreground mb-3">Upload a broker CSV, PDF, or photo of your statement. Review before saving — misread numbers cost real money.</div>
+        <div className="text-xs text-muted-foreground mb-3">Upload a broker CSV, PDF, or photo of your statement. Review before saving — misread numbers cost real money. Or describe holdings in plain language (Google patent).</div>
+        <div className="flex gap-2 mb-3">
+          <input value={nlInput} onChange={(e) => setNlInput(e.target.value)} placeholder='e.g. "20 SCOM at 28 KES, 5 EQTY at 52"' className="flex-1 bg-secondary border border-border rounded-lg px-2 py-1.5 text-xs" />
+          <button onClick={handleNl} className="px-3 py-1.5 rounded-lg bg-secondary border border-border text-xs font-semibold">Parse</button>
+        </div>
         <input type="file" accept=".csv,image/*,.pdf" onChange={onFile} className="text-xs mb-3" />
         {fileName && <div className="text-xs text-muted-foreground mb-2">{fileName}</div>}
         {loading && <div className="text-xs text-primary">Parsing with vision model…</div>}

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct } from '@/data/market-data';
@@ -8,6 +8,12 @@ import AiInsightsPanel from '@/components/AiInsightsPanel';
 import KeyMomentsCard from '@/components/KeyMomentsCard';
 import { useCurrency } from '@/context/CurrencyContext';
 import { formatWithCurrency } from '@/lib/currency';
+import SuggestedPrompts from '@/components/SuggestedPrompts';
+import PredictionEmbed from '@/components/PredictionEmbed';
+import GovTrackerMock from '@/components/GovTrackerMock';
+import { regimeLabel } from '@/lib/analytics/extendedMetrics';
+import { dailyReturns } from '@/lib/analytics/riskMetrics';
+import { supabase } from '@/integrations/supabase/client';
 
 const COLORS = ['hsl(218 90% 66%)', 'hsl(160 60% 52%)', 'hsl(258 89% 76%)', 'hsl(38 95% 55%)', 'hsl(0 76% 58%)', 'hsl(25 95% 55%)'];
 const TIMEFRAMES = [
@@ -29,6 +35,22 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
     return { ...h, price: livePrice, isStale };
   });
   const staleCount = enrichedHoldings.filter(h => (h as { isStale?: boolean }).isStale).length;
+  const [regime, setRegime] = useState<string | null>(null);
+  const [closes, setCloses] = useState<number[]>([]);
+
+  // Regime + closes for extended metrics
+  useEffect(() => {
+    if (n > 0) {
+      supabase.from('price_history').select('close').eq('symbol', holdings[0].sym).order('ts', { ascending: true }).limit(252).then(({ data }) => {
+        const arr = data ? (data as { close: number }[]).map((r) => Number(r.close)) : [];
+        if (arr.length >= 10) {
+          setCloses(arr);
+          const rets = dailyReturns(arr);
+          setRegime(regimeLabel(rets));
+        }
+      });
+    }
+  }, [n, holdings[0]?.sym]);
 
   const totalVal = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.price, 0) : 0;
   const totalCost = n ? enrichedHoldings.reduce((s, h) => s + h.shares * h.cost, 0) : 0;
@@ -86,6 +108,12 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
       {!isLive && (
         <div className="text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
           ⚠️ Live market data unavailable — showing cached/demo prices. Data may be delayed.
+        </div>
+      )}
+      <SuggestedPrompts page="dashboard" />
+      {regime && (
+        <div className={`text-[11px] rounded-lg px-3 py-2 border ${regime === 'bull' ? 'bg-primary/10 border-primary/20 text-primary' : regime === 'bear' ? 'bg-destructive/10 border-destructive/20 text-destructive' : 'bg-muted border-border text-muted-foreground'}`}>
+          Market regime: <strong>{regime}</strong> — {regime === 'bull' ? 'Risk-on — consider taking profits.' : regime === 'bear' ? 'Risk-off — volatility elevated, tighten stops.' : 'Neutral — range-bound.'} {closes.length ? `(${closes.length} points)` : ''}
         </div>
       )}
       <div className="flex items-center gap-2">
@@ -312,6 +340,11 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
             )}
           </div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3.5">
+        <PredictionEmbed />
+        <GovTrackerMock />
       </div>
 
       {/* Activity */}

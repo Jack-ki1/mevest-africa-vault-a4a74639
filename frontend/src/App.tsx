@@ -9,6 +9,7 @@ import { WatchlistProvider } from "@/context/WatchlistContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { RealtimeMarketProvider } from "@/context/RealtimeMarketContext";
 import { CurrencyProvider } from "@/context/CurrencyContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import React, { Suspense, lazy } from "react";
 import { Navigate } from "react-router-dom";
 import AuthPage from "./pages/AuthPage";
@@ -93,11 +94,13 @@ const App = () => (
         <AuthProvider>
           <RealtimeMarketProvider>
             <CurrencyProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppRoutes />
-              </BrowserRouter>
+              <LanguageProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AppRoutes />
+                </BrowserRouter>
+              </LanguageProvider>
             </CurrencyProvider>
           </RealtimeMarketProvider>
         </AuthProvider>

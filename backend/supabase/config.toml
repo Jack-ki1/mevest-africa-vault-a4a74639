@@ -54,3 +54,33 @@ verify_jwt = false
 entrypoint = "./functions/portfolio-snapshot/index.ts"
 # Secured via x-cron-secret header checked inside the function (CRON_SECRET env).
 # Set with: supabase secrets set CRON_SECRET=$(openssl rand -hex 32)
+
+[functions.market-sync]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/market-sync/index.ts"
+
+[functions.key-moments]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/key-moments/index.ts"
+
+[functions.run-briefings]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/run-briefings/index.ts"
+
+[functions.parse-statement]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/parse-statement/index.ts"
+
+[functions.check-alerts]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/check-alerts/index.ts"
+
+[functions.sentiment-sync]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/sentiment-sync/index.ts"

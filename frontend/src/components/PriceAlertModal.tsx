@@ -8,6 +8,9 @@ export default function PriceAlertModal({ open, onClose, symbol, price }: { open
   const { user } = useAuth();
   const [condition, setCondition] = useState('price_above');
   const [threshold, setThreshold] = useState('');
+  const [webhook, setWebhook] = useState('');
+  const [watchlist, setWatchlist] = useState(false);
+  const [extra, setExtra] = useState<string>('');
   const [loading, setLoading] = useState(false);
   if (!open) return null;
   const save = async () => {
@@ -15,10 +18,14 @@ export default function PriceAlertModal({ open, onClose, symbol, price }: { open
     const val = parseFloat(threshold);
     if (!val || val <= 0) { toast({ title: 'Enter a valid threshold' }); return; }
     setLoading(true);
-    const { error } = await supabase.from('price_alerts').insert({ user_id: user.id, symbol, condition, threshold: val });
+    const payload: Record<string, unknown> = { user_id: user.id, symbol: watchlist ? 'WATCHLIST' : symbol, condition, threshold: val };
+    if (webhook) payload.webhook_url = webhook;
+    if (extra) payload.extra_conditions = [{ type: extra, threshold: val }];
+    if (watchlist) payload.watchlist_id = 'all';
+    const { error } = await supabase.from('price_alerts').insert(payload as never);
     setLoading(false);
     if (error) toast({ title: 'Failed', description: error.message, variant: 'destructive' });
-    else { toast({ title: `Alert set for ${symbol}` }); onClose(); }
+    else { toast({ title: `Alert set for ${watchlist ? 'watchlist' : symbol}${webhook ? ' + webhook' : ''}` }); onClose(); }
   };
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
@@ -37,8 +44,15 @@ export default function PriceAlertModal({ open, onClose, symbol, price }: { open
             <option value="rsi_below">RSI below</option>
           </select>
           <input value={threshold} onChange={e => setThreshold(e.target.value)} type="number" placeholder="Threshold value" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm" />
+          <input value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="Webhook URL (TradingView pattern, optional)" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm" />
+          <select value={extra} onChange={(e) => setExtra(e.target.value)} className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm">
+            <option value="">No extra condition</option>
+            <option value="rsi_below">+ RSI below (multi-condition)</option>
+            <option value="rsi_above">+ RSI above (multi-condition)</option>
+          </select>
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={watchlist} onChange={(e) => setWatchlist(e.target.checked)} /> Apply to entire watchlist (one alert many symbols)</label>
           <button onClick={save} disabled={loading} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">{loading ? 'Saving...' : 'Create Alert'}</button>
-          <p className="text-[10px] text-muted-foreground">Delivered via push + email/WhatsApp if you’ve enabled them in Settings → Notifications.</p>
+          <p className="text-[10px] text-muted-foreground">Delivered via push + email/WhatsApp + webhook if set.</p>
         </div>
       </div>
     </div>

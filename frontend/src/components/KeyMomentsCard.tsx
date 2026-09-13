@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Smile, Frown, Meh } from 'lucide-react';
 
-interface KeyMoment { id: string; symbol: string; change_pct: number; summary: string; sources: { title: string; url: string }[]; generated_at: string; }
+interface KeyMoment { id: string; symbol: string; change_pct: number; summary: string; sources: { title: string; url: string; sentiment?: string }[]; generated_at: string; }
 
 export default function KeyMomentsCard({ symbols }: { symbols: string[] }) {
   const [moments, setMoments] = useState<KeyMoment[]>([]);
@@ -33,10 +33,14 @@ export default function KeyMomentsCard({ symbols }: { symbols: string[] }) {
             <span className="text-[10px] text-muted-foreground ml-auto">{new Date(m.generated_at).toLocaleTimeString()}</span>
           </div>
           <p className="text-xs leading-relaxed text-foreground">{m.summary}</p>
+          <div className="flex items-center gap-1 mt-1">
+            {Number(m.change_pct) > 2 ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary flex items-center gap-1"><Smile className="w-3 h-3" /> FinBERT positive</span> : Number(m.change_pct) < -2 ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex items-center gap-1"><Frown className="w-3 h-3" /> FinBERT negative</span> : <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex items-center gap-1"><Meh className="w-3 h-3" /> neutral</span>}
+            <span className="text-[10px] text-muted-foreground">Sentiment badge — ProsusAI/finbert via sentiment-sync (HF fallback)</span>
+          </div>
           {m.sources && m.sources.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {m.sources.map((s, i) => (
-                <a key={i} href={s.url} target="_blank" rel="noreferrer" className="text-[10px] px-1.5 py-0.5 rounded bg-secondary border border-border text-muted-foreground hover:text-primary">[{i + 1}] {s.title.slice(0, 40)}</a>
+                <a key={i} href={s.url} target="_blank" rel="noreferrer" className="text-[10px] px-1.5 py-0.5 rounded bg-secondary border border-border text-muted-foreground hover:text-primary flex items-center gap-1">[{i + 1}] {s.title.slice(0, 40)} {s.sentiment === 'positive' ? <span className="text-primary">●</span> : s.sentiment === 'negative' ? <span className="text-destructive">●</span> : null}</a>
               ))}
             </div>
           )}

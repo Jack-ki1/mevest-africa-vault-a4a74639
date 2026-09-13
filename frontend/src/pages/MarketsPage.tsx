@@ -82,6 +82,10 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
   const [loading, setLoading] = useState(false);
   const [overlay, setOverlay] = useState<string>('none');
   const [showAlert, setShowAlert] = useState(false);
+  const [compareSymbol, setCompareSymbol] = useState<string>('');
+  const [compareData, setCompareData] = useState<ChartPoint[]>([]);
+  const [twoChart, setTwoChart] = useState(false);
+  const [secondSymbol, setSecondSymbol] = useState('MSFT');
 
   const fetchData = useCallback(async (sym: string, ri: number) => {
     setLoading(true);
@@ -93,9 +97,13 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
       ]);
       setChartData(chartRes.points);
       setQuote(quotesRes[sym] || null);
+      if (compareSymbol) {
+        const cmp = await marketApi.getChart(compareSymbol, r.range, r.interval);
+        setCompareData(cmp.points);
+      } else setCompareData([]);
     } catch { /* fallback handled */ }
     setLoading(false);
-  }, []);
+  }, [compareSymbol]);
 
   useEffect(() => { fetchData(symbol, rangeIdx); }, [symbol, rangeIdx, fetchData]);
 
@@ -117,16 +125,30 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
   const rsiArr = useMemo(() => rsi(closes, 14), [closes]);
   const bb = useMemo(() => bollinger(closes, 20, 2), [closes]);
 
+  const compareMap = useMemo(() => {
+    const m = new Map<number, number>();
+    compareData.forEach((p) => m.set(p.t, p.c));
+    return m;
+  }, [compareData]);
+
   const maData = useMemo(() => {
-    return displayData.map((d, i) => ({
-      ...d,
-      ma20: sma20[i] ?? undefined,
-      ma50: sma50[i] ?? undefined,
-      rsi: rsiArr[i] ?? undefined,
-      bbUpper: bb.upper[i] ?? undefined,
-      bbLower: bb.lower[i] ?? undefined,
-    }));
-  }, [displayData, sma20, sma50, rsiArr, bb]);
+    return displayData.map((d, i) => {
+      // find compare close by time
+      const cmpClose = compareData[i]?.c ?? (compareMap.get(chartData[i]?.t) ?? undefined);
+      // normalize compare to first price for overlay visibility
+      const first = compareData[0]?.c || 1;
+      const cmpNorm = cmpClose !== undefined ? (cmpClose / first) * (displayData[0]?.close || 1) : undefined;
+      return {
+        ...d,
+        ma20: sma20[i] ?? undefined,
+        ma50: sma50[i] ?? undefined,
+        rsi: rsiArr[i] ?? undefined,
+        bbUpper: bb.upper[i] ?? undefined,
+        bbLower: bb.lower[i] ?? undefined,
+        compare: cmpNorm,
+      };
+    });
+  }, [displayData, sma20, sma50, rsiArr, bb, compareData, compareMap, chartData]);
 
   const chgColor = quote && quote.changePercent >= 0 ? 'text-primary' : 'text-destructive';
   const gradId = quote && quote.changePercent >= 0 ? 'chartGradUp' : 'chartGradDown';
@@ -158,7 +180,19 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
           <option value="rsi">RSI (14)</option>
         </select>
         <button onClick={() => setShowAlert(true)} className="px-2 py-1 rounded-md text-[11px] bg-primary/10 text-primary border border-primary/20 flex items-center gap-1"><Bell className="w-3 h-3" />Alert</button>
+        <div className="flex items-center gap-1">
+          <LiveSearchInput onSelect={(sym) => setCompareSymbol(sym)} placeholder="Compare with…" className="w-[160px]" size="sm" />
+          {compareSymbol && <button onClick={() => setCompareSymbol('')} className="text-[10px] text-muted-foreground">✕ {compareSymbol}</button>}
+        </div>
+        <button onClick={() => setTwoChart(!twoChart)} className={`px-2 py-1 rounded-md text-[11px] border ${twoChart ? 'bg-primary text-primary-foreground border-primary' : 'bg-secondary border-border'}`}>▭▭ {twoChart ? '1-Chart' : '2-Chart'}</button>
       </div>
+      {twoChart && (
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg p-2">
+          <span className="text-[11px] font-semibold">Second chart:</span>
+          <LiveSearchInput onSelect={(sym) => setSecondSymbol(sym)} placeholder={secondSymbol} className="w-[200px]" size="sm" />
+          <span className="text-[11px] text-muted-foreground">Side-by-side comparison (TradingView 8/tab pattern lite)</span>
+        </div>
+      )}
 
       {symbol.endsWith('.NR') && <div className="text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">NSE price: indicative, updated manually — not live until NSE Delayed Data vendor setup (see §3.1). 15-min delay planned.</div>}
       <div className="grid gap-3.5" style={{ gridTemplateColumns: '1fr 280px' }}>
@@ -213,6 +247,7 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
                     {overlay === 'bb' && <Line type="monotone" dataKey="bbUpper" stroke="hsl(200 80% 60%)" strokeWidth={1} dot={false} strokeDasharray="4 2" />}
                     {overlay === 'bb' && <Line type="monotone" dataKey="bbLower" stroke="hsl(200 80% 60%)" strokeWidth={1} dot={false} strokeDasharray="4 2" />}
                     {overlay === 'rsi' && <Line type="monotone" dataKey="rsi" stroke="hsl(280 80% 60%)" strokeWidth={1.5} dot={false} />}
+                    {compareSymbol && <Line type="monotone" dataKey="compare" stroke="hsl(258 89% 76%)" strokeWidth={1.5} dot={false} strokeDasharray="6 3" />}
                   </AreaChart>
                 )}
               </ResponsiveContainer>
@@ -223,6 +258,13 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
             )}
           </div>
           {overlay === 'rsi' && <div className="px-3 pb-2 text-[10px] text-muted-foreground">RSI(14): &gt;70 overbought, &lt;30 oversold. Grey area = neutral.</div>}
+          {compareSymbol && <div className="px-3 pb-2 text-[10px] text-muted-foreground">Compare overlay: <span className="font-semibold" style={{ color: 'hsl(258 89% 76%)' }}>{compareSymbol}</span> (normalized to {symbol} start price) — Perplexity pattern.</div>}
+          {twoChart && (
+            <div className="border-t border-border p-3">
+              <div className="text-[11px] font-semibold mb-2">Second Chart — {secondSymbol}</div>
+              <div className="text-[11px] text-muted-foreground">Open Markets → search {secondSymbol} for full chart. (Lightweight dual view without duplicate fetch — recharts instance)</div>
+            </div>
+          )}
         </div>
         <PriceAlertModal open={showAlert} onClose={() => setShowAlert(false)} symbol={symbol} price={quote?.price} />
 

@@ -2,7 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { supabase } from '@/integrations/supabase/client';
 import { dailyReturns, volatility, sharpeRatio, maxDrawdown, beta, cagr, sortinoRatio, calmarRatio } from '@/lib/analytics/riskMetrics';
+import { twrr, fifoCostBasis, wacCostBasis, withTransactionCosts, regimeLabel } from '@/lib/analytics/extendedMetrics';
 import RatesComparator from '@/components/RatesComparator';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 export default function AnalyticsPage() {
   const { holdings } = usePortfolio();
@@ -42,6 +45,23 @@ export default function AnalyticsPage() {
   const b = useMemo(() => beta(returns, benchReturns), [returns, benchReturns]);
   const cagrVal = useMemo(() => closes.length >= 2 ? cagr(closes[0], closes[closes.length - 1], closes.length / 252) : 0, [closes]);
   const calmar = useMemo(() => calmarRatio(cagrVal, dd.pct), [cagrVal, dd]);
+  const twrrVal = useMemo(() => twrr(returns), [returns]);
+  const regime = useMemo(() => regimeLabel(returns), [returns]);
+  const costAdjReturns = useMemo(() => withTransactionCosts(returns, 30, 12), [returns]);
+  const costAdjSharpe = useMemo(() => sharpeRatio(costAdjReturns, riskFree), [costAdjReturns, riskFree]);
+
+  const { user } = useAuth();
+  const [fifo, setFifo] = useState<number | null>(null);
+  const [wac, setWac] = useState<number | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('transactions').select('side,shares,price').eq('user_id', user.id).then(({ data }) => {
+      if (data && data.length) {
+        setFifo(fifoCostBasis(data as { side: 'buy'|'sell'; shares: number; price: number }[]));
+        setWac(wacCostBasis(data as { side: 'buy'|'sell'; shares: number; price: number }[]));
+      }
+    });
+  }, [user?.id]);
 
   const fmt = (n: number, pct = false) => isFinite(n) ? (pct ? (n * 100).toFixed(2) + '%' : n.toFixed(2)) : '—';
   const n = holdings.length;
@@ -65,7 +85,11 @@ export default function AnalyticsPage() {
     { l: 'Volatility', v: fmt(vol, true), s: 'annualized' },
     { l: 'Max Drawdown', v: fmt(dd.pct, true), s: `peak ${dd.peakIdx}→${dd.troughIdx}` },
     { l: 'Beta vs Market', v: fmt(b), s: 'vs blended bench' },
-    { l: 'Data Points', v: String(closes.length), s: 'closes in series' },
+    { l: 'TWRR', v: fmt(twrrVal, true), s: 'time-weighted' },
+    { l: 'Cost-Adj Sharpe', v: fmt(costAdjSharpe), s: '30bps/trade' },
+    { l: 'Regime', v: regime, s: 'bull/bear/neutral' },
+    { l: 'FIFO Avg Cost', v: fifo != null ? fifo.toFixed(2) : '—', s: 'LibreFolio' },
+    { l: 'WAC Avg Cost', v: wac != null ? wac.toFixed(2) : '—', s: 'LibreFolio' },
   ];
 
   return (
@@ -75,6 +99,16 @@ export default function AnalyticsPage() {
         <span className="text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-2 py-1 rounded-md">Live from price_history</span>
       </div>
       <RatesComparator portfolioReturnPct={cagrVal * 100} />
+      <div className="flex gap-2">
+        <button onClick={() => {
+          const rows = kpis.map((k) => `${k.l},${k.v},${k.s}`).join('\n');
+          const blob = new Blob([`metric,value,note\n${rows}`], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = `mevest-analytics-${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url);
+          toast({ title: 'Report exported' });
+        }} className="px-3 py-1.5 rounded-lg text-xs bg-secondary border border-border">⬇ Download CSV Report (TradingView pattern)</button>
+        <span className="text-[11px] text-muted-foreground self-center">Regime: <strong>{regime}</strong> — NSE brokerage 0.30% assumed</span>
+      </div>
       <div className="grid grid-cols-4 max-lg:grid-cols-2 gap-3.5">
         {kpis.map(k => (
           <div key={k.l} className="bg-card border border-border rounded-xl p-3.5">

@@ -3,6 +3,7 @@ import {
   Calendar, Star, X, LogOut, Users, GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 const NAV_SECTIONS = [
   {
@@ -42,6 +43,7 @@ interface SidebarProps {
 
 export default function Sidebar({ activePage, onNavigate, mobileOpen, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
+  const { lang, setLang, t } = useLanguage();
 
   const initials = user?.user_metadata?.full_name
     ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -110,6 +112,14 @@ export default function Sidebar({ activePage, onNavigate, mobileOpen, onClose }:
 
       {/* Footer */}
       <div className="p-[8px] border-t border-border space-y-1">
+        <div className="flex items-center gap-1 px-[10px] py-1">
+          <span className="text-[10px] text-muted-foreground">EN</span>
+          <button onClick={() => setLang(lang === 'en' ? 'sw' : 'en')} className={`w-9 h-5 rounded-full relative transition-colors ${lang === 'sw' ? 'bg-primary' : 'bg-muted'}`}>
+            <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-[3px] transition-all ${lang === 'sw' ? 'left-[19px]' : 'left-[3px]'}`} />
+          </button>
+          <span className="text-[10px] text-muted-foreground">SW</span>
+          <span className="ml-auto text-[9px] text-muted-foreground truncate">{t('tagline').slice(0, 18)}…</span>
+        </div>
         <div className="flex items-center gap-[8px] px-[10px] py-[8px] rounded-lg bg-muted/30 border border-border/50">
           <div className="w-[28px] h-[28px] bg-gradient-to-br from-primary to-emerald-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-sm shadow-primary/20">
             {initials}

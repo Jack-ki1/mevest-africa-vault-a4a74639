@@ -6,8 +6,11 @@ import { toast } from '@/hooks/use-toast';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Zap, Upload } from 'lucide-react';
 import { useCurrency } from '@/context/CurrencyContext';
-import { convert, formatWithCurrency } from '@/lib/currency';
+import { formatWithCurrency } from '@/lib/currency';
 import PortfolioImportWizard from '@/components/PortfolioImportWizard';
+import FeesTracker from '@/components/FeesTracker';
+import GoalsTracker from '@/components/GoalsTracker';
+import SuggestedPrompts from '@/components/SuggestedPrompts';
 
 const TABS = ['all', 'stock', 'cryptocurrency', 'etf', 'bond'];
 const TAB_LABELS: Record<string, string> = { all: 'All', stock: 'Stocks', cryptocurrency: 'Crypto', etf: 'ETFs', bond: 'Bonds' };
@@ -87,6 +90,7 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
 
   return (
     <div className="space-y-3.5">
+      <SuggestedPrompts page="portfolio" />
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -224,6 +228,10 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
             )}
           </div>
         </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3.5">
+        <FeesTracker totalValue={totalVal} />
+        <GoalsTracker />
       </div>
       <PortfolioImportWizard open={showImport} onClose={() => setShowImport(false)} />
     </div>
