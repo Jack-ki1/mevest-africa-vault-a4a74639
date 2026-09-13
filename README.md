@@ -1,26 +1,32 @@
-# MEVEST — Intelligent Wealth Management Platform
+# MEVEST — AI-Native Africa + Global Investing Platform
 
-A comprehensive, real-time wealth management and portfolio tracking platform built with **React 18**, **TypeScript**, **Tailwind CSS**, and **Supabase** (Lovable Cloud). MEVEST provides institutional-grade tools for retail investors: real-time market data, AI-powered insights, and global asset coverage — with a focus on Kenyan (NSE) and global markets.
+> **The AI research layer for the African + global retail investor that Google Finance forgot to build.**
 
-> **Monorepo layout:** `frontend/` = Vite + React app · `backend/supabase/` = Supabase config, Postgres migrations & Deno Edge Functions. There is **no root `package.json`** — all `npm` commands run inside `frontend/` (`frontend/package.json:6`).
+A premium, real-time wealth management platform built with **React 18**, **TypeScript**, **Tailwind CSS v3.4**, **Recharts**, **Framer Motion**, and **Supabase** (Lovable Cloud). MEVEST fuses global coverage (US, EU, crypto) with genuine **NSE depth** — the one market none of US giants serve well — plus a **cited, proactive AI** that’s honest about its sources. KES-first, M-Pesa-aware, Swahili-ready, and offline-capable as a PWA.
+
+**Monorepo:** `frontend/` = Vite 5 + React app · `backend/supabase/` = Postgres 15 + 8 Deno Edge Functions. No root `package.json` — all `npm` commands run inside `frontend/` (`frontend/package.json:6`).
+
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](#-production-build--deployment) [![Tests](https://img.shields.io/badge/tests-23%2F23-green)](#-testing) [![Lint](https://img.shields.io/badge/lint-0%20errors-blue)](#-available-scripts) [![PWA](https://img.shields.io/badge/PWA-installable-0ea5e9)](#-pwa) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#-license)
 
 ---
 
 ## Table of Contents
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
+- [What Each Section Offers (12 Pages)](#-what-each-section-offers)
 - [Prerequisites](#-prerequisites)
-- [Quick Start (Frontend Only)](#-quick-start-frontend-only)
+- [Quick Start](#-quick-start-frontend-only)
 - [Environment Variables](#-environment-variables)
 - [Running the Full Stack](#-running-the-full-stack)
 - [Available Scripts](#-available-scripts)
 - [Project Structure](#-project-structure)
 - [Database Schema](#-database-schema)
 - [Edge Functions](#-edge-functions)
-- [Key Features](#-key-features)
+- [PWA](#-pwa)
 - [Testing](#-testing)
 - [Production Build & Deployment](#-production-build--deployment)
 - [Troubleshooting](#-troubleshooting)
+- [Transformation Plan](#-transformation-plan)
 - [License](#-license)
 
 ---
@@ -28,328 +34,324 @@ A comprehensive, real-time wealth management and portfolio tracking platform bui
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────────────────────────────┐
-│                  Frontend (React 18 + Vite 5)    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────────┐ │
-│  │  Pages   │ │Components│ │ Contexts (State)  │ │
-│  └──────────┘ └──────────┘ └──────────────────┘ │
-│           │          │              │             │
-│           └──────────┼──────────────┘             │
-│                      ▼                            │
-│          ┌──────────────────┐                     │
-│          │ Supabase Client  │  frontend/src/integrations/supabase/client.ts:25 │
-│          └────────┬─────────┘                     │
-└───────────────────┼──────────────────────────────┘
-                     ▼
-┌──────────────────────────────────────────────────┐
-│            Supabase (Postgres + Auth + Edge Fns) │
-│  ┌────────────┐ ┌───────────┐ ┌──────────────┐  │
-│  │  Database  │ │   Auth    │ │Edge Functions │  │
-│  │ (Postgres) │ │(Email+OAuth)│ │(Deno Deploy) │  │
-│  └────────────┘ └───────────┘ └──────────────┘  │
-│         │                           │            │
-│         ▼                           ▼            │
-│  ┌────────────┐        ┌───────────────────┐     │
-│  │   RLS      │        │  Yahoo Finance    │     │
-│  │ Policies   │        │  API (proxy)      │     │
-│  └────────────┘        └───────────────────┘     │
-│                                     │            │
-│                        ┌────────────┴──────┐     │
-│                        │  AI Gateway       │     │
-│                        │ (Gemini 3 Flash /│     │
-│                        │  OpenAI)         │     │
-│                        └───────────────────┘     │
-└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    Frontend (React 18 + Vite 5)              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────────────────────┐  │
+│  │  12 Pages│ │ 20+ Comp │ │ Contexts: Auth/Portfolio/    │  │
+│  │  Bento + │ │ Glass +  │ │ Watchlist/Market/Currency/   │  │
+│  │  Motion  │ │ Recharts │ │ Language/Theme               │  │
+│  └──────────┘ └──────────┘ └──────────────────────────────┘  │
+│           │          │              │                        │
+│           └──────────┼──────────────┘                        │
+│                      ▼                                       │
+│          ┌──────────────────┐                                │
+│          │ Supabase Client  │  frontend/src/integrations/    │
+│          │  + Realtime      │  supabase/client.ts:25         │
+│          └────────┬─────────┘                                │
+└───────────────────┼──────────────────────────────────────────┘
+                    ▼
+┌──────────────────────────────────────────────────────────────┐
+│            Supabase (Postgres 15 + Auth + Realtime + Fns)   │
+│  ┌────────────┐ ┌───────────┐ ┌──────────────────────────┐   │
+│  │  Database  │ │   Auth    │ │  8 Edge Functions (Deno) │   │
+│  │  13 tables │ │ JWT/RLS   │ │  Realtime postgres_changes│   │
+│  └────────────┘ └───────────┘ └────────────┬─────────────┘   │
+│         │                           │       │                 │
+│         ▼                           ▼       ▼                 │
+│  ┌────────────┐        ┌───────────────────┐  ┌────────────┐ │
+│  │   RLS      │        │  Yahoo Finnhub    │  │ AI Gateway │ │
+│  │  Policies  │        │  TwelveData →NSE  │  │ Gemini/    │ │
+│  └────────────┘        │  market-sync cron │  │ OpenAI/    │ │
+│                        └───────────────────┘  │ HF FinBERT │ │
+│                                               └────────────┘ │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Data flow for market data:** `RealtimeMarketContext` → `frontend/src/lib/api/market.ts:51` (`marketApi.*`) → `supabase.functions.invoke()` → Edge Function in `backend/supabase/functions/*` → Yahoo Finance / AI provider → cached response (30s–5m) → UI.
+**Data flow v2:** `market-sync` (Finnhub → TwelveData → Yahoo, every 5 min) → `price_history` (Postgres, `latest_prices` MV) → `supabase Realtime` → `RealtimeMarketContext` (no polling `O(symbols)` vs `O(users)`) → UI. `sentiment-sync` (HF `ProsusAI/finbert`) enriches `news_cache` → `Key Moments` + badges.
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer      | Technology |
-|------------|------------|
-| Frontend   | React 18.3, TypeScript 5.8, Vite 5.4 (`frontend/vite.config.ts:6`), React Router 6.30 |
-| Styling    | Tailwind CSS v3.4, shadcn/ui (Radix), Framer Motion 12, `tailwindcss-animate` |
-| Charts     | Recharts 2.15 |
-| State      | React Context API, TanStack React Query 5.83 (`frontend/src/App.tsx:16`) |
-| Backend    | Supabase — Postgres 15 (`backend/supabase/config.toml:12`), Auth, Edge Functions (Deno) |
-| AI         | Gemini 1.5 Flash / OpenAI via Edge Function `ai-insights` |
-| Market Data| Yahoo Finance API proxied via Edge Functions; optional Alpha Vantage / Finnhub / CoinGecko fallbacks |
-| Testing    | Vitest 3.2 + jsdom (`frontend/vitest.config.ts:7`), Testing Library, Playwright 1.57 |
-| Tooling    | ESLint 9, TypeScript ESLint, Autoprefixer, `vite-plugin-react-swc` |
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18.3, TypeScript 5.8, Vite 5.4 (`frontend/vite.config.ts:6`), React Router 6.30 |
+| Styling | Tailwind CSS v3.4, shadcn/ui (Radix), **Framer Motion 12**, `tailwindcss-animate`, **Glassmorphism bento** (`bg-card/70 backdrop-blur-xl`) |
+| Charts | **Recharts 2.15** + planned `lightweight-charts` (TradingView OSS) |
+| State | React Context API (`Auth`, `Portfolio`, `Watchlist`, `RealtimeMarket`, `Currency`, `Language`, `Theme`), TanStack React Query 5.83 |
+| Backend | Supabase — Postgres 15 (`backend/supabase/config.toml:12`), Auth, Realtime (`postgres_changes`), 8 Edge Functions (Deno) |
+| AI | Gemini 1.5 Flash / OpenAI / OpenRouter via `ai-insights` (11 tools, 5-iteration agentic loop) + HF `ProsusAI/finbert` via `sentiment-sync` |
+| Market Data | Yahoo Finance (primary proxy) → Finnhub (60 req/min) → Twelve Data (800/d) → NSE Delayed Data (15 min, licensed vendor planned) |
+| PWA | `frontend/public/manifest.webmanifest` + `frontend/public/sw.js` (shell cache, stale-while-revalidate) |
+| Testing | Vitest 3.2 + jsdom (`frontend/vitest.config.ts:7`), Testing Library, Playwright 1.57 |
+| Tooling | ESLint 9, TypeScript ESLint, Autoprefixer, `vite-plugin-react-swc` |
+
+---
+
+## 🎨 Design Principles (2026)
+
+Borrowed from Mercury (calm is credibility), Stripe (tables + sparklines), Revolut (dark legibility), Apple's Liquid Glass, and Bento dashboards: **glass + bento + motion** everywhere. Every page is `grid grid-cols-12` bento, `GlassCard` (`backdrop-blur-xl`), `motion` hover `y:-2`. Dark/light/system theme, tabular numerals, right-aligned figures, inline sparklines.
+
+---
+
+## 🗂️ What Each Section Offers
+
+### 📊 Dashboard (`/dashboard` — `frontend/src/pages/DashboardPage.tsx:79`)
+Your daily investor home. Bento 12-col:
+
+| Card | What it does | Creative twist |
+|------|--------------|----------------|
+| **Stats 4×3** | Portfolio Value (with **14-pt sparkline**), Invested, P&L, Today's P&L — KES/USD toggle (`useCurrency`) | Sparkline is live `totalVal` drift, not static |
+| **Health Radial** | 0-100 donut (48 + holdings×5 + types×6 + markets×4 + PL bonus) | Green≥80/Amber≥55/Red — `framer-motion` spring |
+| **AI Daily Briefing** | Mock 06:00 EAT: portfolio delta, NSE banks +2.1%, rebalance idea. 2 CTAs: `Ask follow-up in chat` → `AiChatWidget`, `What to watch?` | Future: generated by `run-briefings` cron |
+| **Goals Ring** | Next `investment_goals` donut + bar (`investment_goals` table) | M-Pesa framing |
+| **Market Pulse strip** | VIX, breadth 68% adv, NSE 20 live | `MARKET_REGIONS` live |
+| **ESG Badge** | 62 + holdings×3, Leader/Average/Laggard, leaf icon, low-carbon tilt | Sector-weighted mock |
+| **Performance** | Current value `AreaChart` + **Cash-flow mini bar** (6M inflow vs outflow) | Net KES caption |
+| **Allocation** | Pie `inner 30 outer 48` by `type` | Hover `Tooltip` % |
+| **Movers** | Top Gainers/Losers (5 each, live `chgPct`) + Sector Performance 1D bars | `LIVE` pulse dot |
+| **Holdings** | Table with flash `price-up/down`, stale badge | RLS `holdings` |
+| **Suggested Prompts** | `SuggestedPrompts page="dashboard"` — 2 one-click briefing creates | Google Tasks pattern |
+| **Prediction + Gov** | `PredictionEmbed` (Polymarket) + `GovTrackerMock` (Parliament disclosures) | Perplexity virality |
+
+### 💼 My Portfolio (`/portfolio` — `frontend/src/pages/PortfolioPage.tsx:15`)
+*All positions, now bento:*
+
+- **Header:** `SuggestedPrompts page="portfolio"`, `LIVE` badge, KES/USD toggle, Import (CSV/image + **nat-lang parse** `"20 SCOM at 28 KES"` via `PortfolioImportWizard.tsx:58`), `⬇ CSV/JSON`, `+ Add Holding`.
+- **Stats** 4× glass cards + sparkline.
+- **Holdings table** — flash, stale `amber` badge, Remove.
+- **Rebalancer Widget** — actual % by `type` vs target sliders (55/20/15/10). Dual bars (actual `primary/70` vs target `amber/60`) + `Buy/Sell KES X` per type, drift total, Reset. *Stripe/Brex density.*
+- **Dividend Projection** — fetches `symbols_meta.dividend_yield` (fallback `MARKET.divYield`), `annual = shares*price*yield`, seasonalized 12M `BarChart` + annual total & yield% in `formatWithCurrency`.
+- **What-If Simulator** — input KES + symbol select → `addedShares = amt/price` (KES↔USD via `usdKes`), new total, new annual div & yield, before/after alloc table. *Blankly one-line switch vibe.*
+- **FeesTracker** `frontend/src/components/FeesTracker.tsx:1` — donut by `fee_type` (`fees_ledger` table), TER drag `fees/totalVal%`, ledger list. *Wealthfolio pattern.*
+- **GoalsTracker** `frontend/src/components/GoalsTracker.tsx:1` — progress bar, `+ KES 1,000 via M-Pesa (mock)` per goal (`investment_goals`). *Ziidi KES 1 min.*
+- **Exports:** `exportCSV`, `exportJSON`, **Export tax lots** (FIFO CSV, `FileDown`).
+
+### 📈 Advanced Analytics (`/analytics` — `frontend/src/pages/AnalyticsPage.tsx:77`)
+*From “Awaiting…” to institutional-grade:*
+
+- **12 KPIs bento** (staggered `delay i*0.04`): CAGR, Sharpe (`rf = T-Bill 91`), Sortino, Calmar, Volatility, Max DD, Beta, **TWRR**, **Cost-Adj Sharpe** (30bps/trade), **Regime** (`bull/bear/neutral` via `extendedMetrics.regimeLabel`), **FIFO Avg Cost**, **WAC Avg Cost** (from `transactions` table). + `RatesComparator` + **Download CSV Report** (TradingView pattern).
+- **Efficient Frontier** — `ScatterChart` risk% vs return% (5 mock: Conservative, Max Sharpe purple, Balanced, Growth, Aggressive + current `vol*100` vs `cagr*100` green).
+- **Monte Carlo 100 Paths** — 30-day GBM fan from `closes[last]` using `dailyVol=vol/√252`, `Box-Muller randn()`, 100 faint lines + p10/p50/p90. Median `T+30` caption.
+- **Correlation Heatmap** — `N×N` matrix (or `sym/SPY/NSE20` when single holding) via `pseudoCorr` hash, `-1 red → +1 green`, `motion scale` per cell, color legend.
+- **Drawdown Underwater** — `(c-peak)/peak*100` `AreaChart` gradient red.
+- **Factor Exposures** — vertical `BarChart` Market (beta), Size 0.32, Value -0.18, Momentum 0.47, Quality 0.21 (diverging HSL, domain `[-1,1.5]`).
+- Source: `frontend/src/lib/analytics/riskMetrics.ts:1` + `frontend/src/lib/analytics/extendedMetrics.ts:1` (twrr, fifo/wac, `withTransactionCosts`, `regimeLabel`), live `price_history` + `kenya_rates` risk-free.
+
+### 🕯️ Markets (`/markets` — `frontend/src/pages/MarketsPage.tsx:32`)
+*Supercharts lite (TradingView) + live intel:*
+
+- **Ticker Tape** — infinite `motion x -33.33% 40s` triplicated `tickerItems`/`TICKER_ITEMS`, `LIVE/SIM` badge, edge fades.
+- **Tabs:** Charts / Heatmap / Market Watch (Bento glass).
+- **ChartsTab:** Search + range `1D|1W|1M|3M|1Y|5Y` + overlay `none|MA 20/50|volume|BB|RSI(14)` via `frontend/src/lib/analytics/indicators.ts:1` (sma/ema/rsi/bollinger), **Compare overlay** (second search → purple normalized line, Pearson + Δ% badge, raw/normalized toggle), **2-chart toggle** (side-by-side second `AreaChart` with own quote), **NSE indicative banner** for `.NR` + **Alert** (Bell → `PriceAlertModal` with webhook/multi/watchlist). `Recharts` `AreaChart/ComposedChart` with gradients.
+- **AI Market Summary** — 2-sentence pre-written (S&P +0.42% breadth 68%, NSE +2.10%; BTC +2.15% >$67K) with `[1][2]` citations (NSE Daily Report, CoinDesk).
+- **Market Breadth** — adv/decl/unch counts + `volAdvPct` stacked bars, Risk-on/off.
+- **Market Watch Table** — region `us/crypto/africa/europe/commodities/bonds` + **Sparkline column** (`SparklineCell` 72×28 `AreaChart` per row, green/red).
+- **HeatmapTab** — sector treemap (sized by `√mktcap`, colored by `chg`) + `colorForChg` scale.
+
+### 🔍 Screener (`/screener` — `frontend/src/pages/ScreenerPage.tsx:10`)
+*From 3 text filters to a real instrument:*
+
+- **NL Screener box** (Perplexity pattern) — input `'Find undervalued NSE banks with PE<10 and div>4%'` → regex maps to `Filters` (pe max, div min, NSE, Banking, Sharia). `Apply` hydrates filters + toast.
+- **Pine-lite formula bar** (TradingView pattern) — `SMA(close,20) > SMA(close,50) AND RSI(14) < 70` → `frontend/src/lib/pineLite.ts:1` (`evaluatePineLite` with `sma`/`rsi` last values) filtered client-side.
+- **Advanced filters** — `FreeText` Type/Exchange/Sector + `NumFilter` MktCap/PE/Div Yield/Perf% (min-max) + **Sharia only** checkbox (Ndovu insight).
+- **Presets:** `screener_presets` table + **Preset gallery** 6 cards with sparkline (`NSE Value Banks`, `Dividend Aristocrats`…) + `applyPresetGallery`, bulk `Save` (bookmark) + `Copy-filter-link` (base64).
+- **Backtest top-5** — deterministic mock 1Y return `8+chg*2.5+div*0.8-(pe-15)*0.3`, avg/Sharpe/win-rate (“if you bought top 5 equally weighted 1Y ago”).
+- **Table** — `* # Asset Type Price 24h% Exchange Sector` + star (watchlist) + globe (live) + Load 30 more + **Export top-5 to watchlist**.
+
+### 🗓️ Calendar (`/calendar` — `frontend/src/pages/CalendarPage.tsx:8`)
+*Regional research: Mali’s dividend book-closure + Google live earnings + TradingView premarket:*
+
+- **Tabs:** Earnings / **Dividends (NSE)** / Economic — `bg-secondary` pill.
+- **Earnings lane** — summary cards (This Week/Next Week/Avg EPS Growth/Beat Rate 78%) + **Earnings table** (Date/Time/Company/EPS Est/Prior/Rev Est/Prior/Surprise) + **Earnings Audio stub** (▶ Play live call toast) + **AI Highlights** (2 bullets: KCB Q3 beat 4%, Safaricom M-Pesa +12% YoY) + transcript placeholder.
+- **Dividends lane** — `corporate_actions` (`dividend`/`book_closure`) + **Holdings highlighted** amber, `Filing PDF` link (`news_cache`), **Alert 3d before** button (creates `price_alerts`), **Premarket only** filter (NSE 09:30 EAT), progress ring for ex-div countdown.
+- **Economic lane** — impact filter `all|high|medium|low` + table (Date/Time/Country/Event/Impact/Forecast/Previous) + `googleCalendarUrl()` `TEMPLATE` per row.
+- **IPO lane** — 6 mock IPOs (NSE:ADIL etc.) bento cards + pipeline table + Google Calendar.
+- **Splits lane** — 5 splits/bonus cards + ratio hero.
+
+### 📰 News Feed (`/news` — `frontend/src/pages/NewsFeedPage.tsx:60`)
+*Real-time with HF FinBERT & reliability:*
+
+- **Feed:** `market-news` (general/crypto/tech/forex/earnings + ticker-specific) + fallback `MARKET` mock. 45+ exchanges.
+- **Sentiment Filter** All/Bullish/Bearish (FinBERT) + category `general|crypto|tech|forex|earnings`.
+- **AI Summarizer** per article (450ms mock 1-sentence toggled), **Source reliability** badge 0-100 (Bloomberg 92, Reuters 94… hash fallback), **Bookmark** `localStorage['mevest_news_bookmarks']` + sidebar list + trending symbols.
+
+### ⭐ Watchlist (`/watchlist` — `frontend/src/pages/WatchlistPage.tsx:1`)
+*Starred assets with AI & notes:*
+
+- **Cards + Table** with `LIVE` badge, sparkline (recharts mini Area), price + change, remove.
+- **Price alerts inline** Bell/BellRing per row → modal (`target` + `above|below`, `localStorage mev_alerts`).
+- **Notes column** editable textarea per symbol (`localStorage mev_notes`, card preview with StickyNote).
+- **AI Score** deterministic `chgPct*0.6+hash(sym)` → Strong Buy/Buy/Hold/Sell/Strong Sell badge + numeric, **Sort by AI score** toggle. *TradingView Copilot quiz vibe.*
+
+### 👥 Community (`/community` — `frontend/src/pages/CommunityPage.tsx:10`)
+*TradingView Ideas + verified track records:*
+
+- **Leaderboard** opt-in pseudonymous, computed from `portfolio_snapshots` (never self-reported), **tiers** Gold≥15%/Silver≥5%/Bronze (Crown/Medal/Trophy) glass card, `Copy top 3 holdings` to clipboard.
+- **Ideas Stream** — list `ideas` (symbol pill + title + body + sentiment), `💡 Publish Idea` modal (symbol/title/body → `ideas` table, auth required), collapsible **Comments thread** (mock seeded + add + likes `ThumbsUp` count), like/comment per idea.
+- Filter `nse|us|blended` (future: weights-on-click, not cost basis).
+
+### 🎓 Learn (`/learn` — `frontend/src/pages/LearnPage.tsx:18`)
+*Financial literacy = retention (none of Big 3 does this):*
+
+- **4 modules** (3-5 min each): Book-closure date, T-Bill vs MMF vs Stocks (→ `RatesComparator`), P/E ratio (→ `Screener`), Diversification (→ `Analytics` Beta). Each ends in quiz (3 questions) → badge (`learning_progress` table).
+- **Interactive calculators tabs**: **Compound** (principal/rate/years → FV + Area), **Retirement** (current/retire/monthly/rate → FV), **Mortgage** (principal/rate/years → monthly/total/interest + bar). Live result + chart.
+- **Gamification:** XP bar `completed*25`, Level, **Streak** `mev_streak` weekly dots + Flame, **Certificate modal** after 4 modules (Award, copy link).
+- Tie-ins drive feature discovery.
+
+### ⚙️ Settings (`/settings` — `frontend/src/pages/SettingsPage.tsx:11`)
+*Production-grade + playground:*
+
+| Tab | Icon | What it offers |
+|-----|------|----------------|
+| **Profile** | User | Display name, email (locked), base currency (8 options), timezone (6), Save/Reset, Sign Out → `profiles` upsert |
+| **Notifications** | Bell | 6 alert types (Price/Dividends/Breaking/Drift/Bond/FX) + 2 reports (Weekly/Monthly) → `user_settings` JSON |
+| **AI Briefings** | Bell | Nat-lang `"Send me daily pre-market briefing..."` + cron `0 6 * * 1-5` + delivery `in_app|email|whatsapp` → `scheduled_briefings` (WhatsApp = Kenya moat, 90%+ penetration) + `run-briefings` cron. *Google Tasks parity + WhatsApp edge.* |
+| **Data Sources** | Key | Built-in `Yahoo Finance` + `MEVEST AI` active + 5 third-party (Alpha Vantage/CoinGecko/NewsAPI/Polygon/Custom) testUrl + RLS `user_api_keys` + masked reveal + `Test Connection` (CORS-aware) |
+| **Security** | Shield | 2FA `Coming soon` (preference only), Login Alerts toggle, Session Timeout, Change Password → `supabase.auth.resetPasswordForEmail` |
+| **Billing** | CreditCard | Pro $29/mo, usage (API Calls 1,247/10k, Data Points 48k/100k, Portfolios 3/∞) |
+| **API Playground** | FlaskConical | Live `marketApi.getQuotes` / `search` (`Try it` → JSON viewer + Copy). *Perplexity `finance_search` pattern.* |
+| **Export Data** | Download | Bundles holdings + watchlist + alerts/notes → `mevest-export-YYYY-MM-DD.json` (mock ZIP). Counts. |
+| **Appearance** | Palette | **Theme builder** color picker `mev_primary` → CSS `--primary` live, swatches, preview card (buttons, bar, LIVE pill). *Finvizity.* |
+
+Plus: **Sidebar** `frontend/src/components/layout/Sidebar.tsx:12` — 3 groups (Portfolio/Markets/Personal), active `primary/12`, **EN/SW toggle** (`LanguageContext` `en|sw`, tagline `AI research layer…`), Pro badge, Sign Out. **Topbar** — search, add-holding, menu. **AI Chat** `AiChatWidget.tsx:35` — floating, streams markdown, citation chips `[$1]` → `primary/15` pill, **cited sources drill-down**, `mevest-ask-followup` hook from Briefing, footer `MEVEST AI cites its sources. Verify anything you plan to act on.`
 
 ---
 
 ## ✅ Prerequisites
 
-| Requirement | Version (verified) | Notes |
-|-------------|-------------------|-------|
-| Node.js | `v24.21.0` (or >= 18) | Check with `node -v` |
-| npm | `11.19.0` (or >= 9) | `npm -v` |
+| Requirement | Version | Notes |
+|-------------|---------|-------|
+| Node.js | `v24.21.0` (or >=18) | `node -v` |
+| npm | `11.19.0` (or >=9) | `npm -v` |
 | Supabase CLI | `2.117.0` via `npx supabase` | `npx supabase --version` |
-| Docker Desktop | latest | **Only for local Supabase** (`backend/supabase/config.toml:10` needs Postgres) |
-| Git | any |  |
+| Docker Desktop | latest | Only for local Supabase |
+| Git | any | |
 
-> No global install needed — the repo uses `npx supabase` and `npm` inside `frontend/`.
+No global install needed — repo uses `npx supabase` + `npm` inside `frontend/`.
 
 ---
 
 ## 🚀 Quick Start (Frontend Only)
 
-Fastest way to see the UI. Market/AI calls will return empty arrays until env is configured (graceful fallback in `frontend/src/lib/api/market.ts:52-62`).
-
 ```bash
-# 1. Clone
 git clone <repo-url> mevest-africa-vault
 cd mevest-africa-vault
 
-# 2. Install — NOTE: run inside frontend/, not repo root
 cd frontend
 npm install
 
-# 3. Env — copy template and fill real keys
 cp .env.example .env
-# then edit .env (see Environment Variables below)
-# Minimum required:
-#   VITE_SUPABASE_URL=https://<project-id>.supabase.co
-#   VITE_SUPABASE_ANON_KEY=<anon-key>
+# edit .env: VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
 
-# 4. Run
 npm run dev
-# → http://localhost:8080  (configured in frontend/vite.config.ts:7-9: host "::", port 8080)
-#    HMR overlay disabled (vite.config.ts:10-12), /api proxied to http://localhost:3001 (vite.config.ts:13-18)
+# → http://localhost:8080 (vite.config.ts:7 host "::", port 8080, HMR overlay off)
 ```
 
-Expected: UI loads; if `.env` still contains placeholder values (`your_supabase_anon_key` / `test-key`), console shows `[MEVEST] Supabase is not configured` from `frontend/src/integrations/supabase/client.ts:18-22` and `AuthPage.tsx:112` displays a setup banner. The app still renders with mock/static data.
+If `.env` still placeholder (`your_supabase_anon_key`), console shows `[MEVEST] Supabase is not configured` (`client.ts:18`) but UI renders with mock data.
 
 ---
 
 ## 🔐 Environment Variables
 
-### Frontend (`frontend/.env` — exposed to browser, `VITE_` prefix required)
+### Frontend (`frontend/.env` — `VITE_` prefix)
 
-Create via `cp frontend/.env.example frontend/.env` (`frontend/.env.example:1`).
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | **Yes** | `https://<project-id>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` or `VITE_SUPABASE_PUBLISHABLE_KEY` | **Yes** | anon key (browser-safe) |
+| `VITE_SUPABASE_PROJECT_ID` | Recommended | e.g. `fulgofnlmlmetlgidhup` |
+| `VITE_VAPID_PUBLIC_KEY` | For push | Web Push VAPID public |
+| `VITE_ALLOWED_ORIGINS` | No | CORS csv, default `*` |
 
-| Variable | Required | Description | Where to get |
-|----------|----------|-------------|--------------|
-| `VITE_SUPABASE_URL` | **Yes** | Supabase API URL | Dashboard → Settings → API → Project URL |
-| `VITE_SUPABASE_ANON_KEY` *or* `VITE_SUPABASE_PUBLISHABLE_KEY` | **Yes** | Anon / publishable key (browser-safe) | Same page — `anon` key |
-| `VITE_SUPABASE_PROJECT_ID` | Recommended | Project ref (e.g. `fulgofnlmlmetlgidhup`) | URL / `backend/supabase/config.toml:1` |
+Client accepts either anon key name (`frontend/src/integrations/supabase/client.ts:6`). `isSupabaseConfigured()` returns `false` if `your_supabase|test-key|placeholder`.
 
-The client accepts either `VITE_SUPABASE_ANON_KEY` or `VITE_SUPABASE_PUBLISHABLE_KEY` (`frontend/src/integrations/supabase/client.ts:6-8`). If either contains `your_supabase`, `test-key`, or `placeholder`, `isSupabaseConfigured()` (`client.ts:38`) returns `false` and the app warns instead of crashing (`client.ts:25-27` uses fallback `https://placeholder.supabase.co`).
+### Backend / Edge Functions (Supabase secrets, never browser)
 
-**Current repo default** (`frontend/.env:2-4`):
-```ini
-VITE_SUPABASE_URL="https://fulgofnlmlmetlgidhup.supabase.co"
-VITE_SUPABASE_ANON_KEY="your_supabase_anon_key"   # ← REPLACE with real key
-VITE_SUPABASE_PROJECT_ID="fulgofnlmlmetlgidhup"
-```
-
-### Backend / Edge Functions (never exposed to browser — set as Supabase secrets)
-
-Listed in `frontend/.env.example:15-40` for local `supabase functions serve --env-file`.
-
-| Secret | Required | Description |
-|--------|----------|-------------|
-| `SUPABASE_URL` | For local serve | Same as `VITE_SUPABASE_URL` |
-| `SUPABASE_ANON_KEY` | For local serve | Same anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Yes for `ai-insights` writes** | Dashboard → Settings → API → `service_role` (admin, keep secret) |
-| `GEMINI_API_KEY` *or* `OPENAI_API_KEY` *or* `OPENROUTER_API_KEY` | For AI chatbot | One AI provider is enough |
-| `ALPHA_VANTAGE_KEY` | No | Market fallback |
-| `FINNHUB_KEY` | No | Market fallback |
-| `COINGECKO_KEY` | No | Market fallback (rate-limited) |
-
-Optional tuning vars (see `frontend/.env.example:42-81`): `PORT`, `NODE_ENV`, `VITE_ALLOWED_ORIGINS`, `VITE_SESSION_TIMEOUT` (3600000), `VITE_REFRESH_TOKEN_INTERVAL` (86400000), `VITE_MARKET_DATA_CACHE_TTL` (1800000), `VITE_QUOTES_CACHE_TTL` (30000), `VITE_AI_MODEL` (`gemini-1.5-flash`), `VITE_AI_MAX_TOKENS`, feature flags `VITE_ENABLE_REAL_TIME_MARKETS` etc. All default to sensible values if unset.
+| Secret | Required |
+|--------|----------|
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Yes for writes |
+| `GEMINI_API_KEY` or `OPENAI_API_KEY` or `OPENROUTER_API_KEY` | For AI (one is enough) |
+| `FINNHUB_KEY`, `TWELVE_DATA_KEY`, `HF_API_KEY` | Market + sentiment fallbacks |
+| `CRON_SECRET` | For `market-sync`/`key-moments`/`run-briefings`/`sentiment-sync`/`check-alerts` |
+| `WHATSAPP_TOKEN` | For WhatsApp delivery stub |
+| `ALPHA_VANTAGE_KEY`, `COINGECKO_KEY` | Optional |
 
 ---
 
-## 🖥️ Running the Full Stack (Frontend + Backend)
+## 🖥️ Running the Full Stack
 
-This project is a **monorepo** (`frontend/` + `backend/supabase/`). The backend is **Supabase** (Postgres 15 + Auth + 6 Deno Edge Functions) — it can run **hosted (Lovable Cloud)** or **locally via Docker**. Frontend always runs the same (`frontend/vite.config.ts:7` → `http://localhost:8080`).
-
-> **You can run frontend alone** — it connects to hosted Supabase at `https://fulgofnlmlmetlgidhup.supabase.co` (`frontend/.env:2`) already configured. No separate backend process needed. Use local backend only if you want fully offline dev.
+Monorepo `frontend/` + `backend/supabase/`. Backend is Supabase (Postgres 15 + Auth + Realtime + 8 Fns) — hosted (Lovable Cloud `fulgofnlmlmetlgidhup`) or local Docker. Frontend always `http://localhost:8080`.
 
 ### Backend Overview
 
-| Part | Location | What it does |
-|------|----------|--------------|
-| Postgres 15 | `backend/supabase/config.toml:12` + `migrations/*.sql` | 7 tables (`profiles`, `holdings`, `watchlist_items`, `user_settings`, `portfolio_transactions`, `portfolio_snapshots`, `user_api_keys`) + RLS + `handle_new_user` trigger |
-| Auth | Supabase GoTrue | Email + Google OAuth, email-confirmation toggle, JWT |
-| Edge Functions (6) | `backend/supabase/functions/*` + `config.toml:25-53` (`verify_jwt=false` locally) | `market-search/quotes/chart/news`, `ai-insights` (Gemini/OpenAI 11 tools), `portfolio-snapshot` |
+| Part | Location | Purpose |
+|------|----------|---------|
+| Postgres 15 | `backend/supabase/config.toml:12` + `migrations/*.sql` | **13 tables** (see Schema) + RLS + `handle_new_user` trigger |
+| Auth | Supabase GoTrue | Email + Google OAuth, JWT |
+| Realtime | `postgres_changes` | `price_history` → `RealtimeMarketContext` push, no polling |
+| Edge Functions (8) | `backend/supabase/functions/*` + `config.toml:25-81` | `market-*`, `ai-insights`, `portfolio-snapshot`, `market-sync`, `key-moments`, `run-briefings`, `parse-statement`, `check-alerts`, `sentiment-sync` |
 
-**Ports (local, `config.toml:3-26`):**
-
-| Service | URL |
-|---------|-----|
-| API (PostgREST + Auth + Functions) | `http://localhost:54321` |
-| Postgres | `localhost:54322` |
-| Studio (DB GUI + Auth) | `http://localhost:54323` |
-| Inbucket (catches auth emails) | `http://localhost:54324` (smtp 54325) |
-
----
-
-### Prerequisites for Local Backend
-
-| Requirement | Check | Fix |
-|-------------|-------|-----|
-| Docker Desktop running | `powershell.exe -c "Get-Process *docker*"` or `docker ps` | Start **Docker Desktop** from Windows Start → wait for whale icon green |
-| WSL integration | Docker Desktop → Settings → Resources → WSL Integration → enable your distro (`Ubuntu` — `wsl --list --verbose` shows `Ubuntu Running`, `docker-desktop Stopped` means Desktop off) | Toggle on, Apply & Restart |
-| Supabase CLI | `npx supabase --version` → `2.117.0` | `npm i -g supabase` or `npx supabase@latest` |
-| Node/npm inside `frontend/` | `node -v` `v24.21.0`, `npm -v` `11.19.0` | `nvm use 18` |
-
-> If `docker ps` shows `The command 'docker' could not be found in this WSL 2 distro` → WSL integration not enabled for this distro. If `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine` → Docker Desktop not running (see above; on this test machine `docker-desktop` was `Stopped`, see § Verified Test).
-
----
+**Ports local:** API `54321`, Postgres `54322`, Studio `54323`, Inbucket `54324`.
 
 ### Option A — Hosted Backend (Recommended, No Docker)
 
-Uses the **already-deployed Lovable Cloud project** `fulgofnlmlmetlgidhup` (`frontend/.env:2-5`). **Tested 2026-09-12: `auth/health 200 GoTrue v2.196.0`, anon `SELECT` → `42501` (RLS ok, not missing).**
+Already wired to `https://fulgofnlmlmetlgidhup.supabase.co`. Tested `auth/health 200`.
 
-**To use it (0 extra steps — already wired):**
 ```bash
 cd frontend
-cat .env # should show VITE_SUPABASE_URL=https://fulgofnlmlmetlgidhup.supabase.co + real anon key
-npm run dev # → http://localhost:8080 — portfolio/watchlist/AI + market proxy work via hosted functions
+npm run dev # → http://localhost:8080
 ```
 
-**To deploy your own hosted copy:**
+Deploy your own:
+
 ```bash
-# 1. Create project at https://supabase.com/dashboard → Settings → API → copy URL + anon + service_role
-# 2. Apply migrations (hosted):
-npx supabase link --project-ref <your-project-id>
-npx supabase db push  # pushes backend/supabase/migrations/*.sql
-# or: Dashboard → SQL Editor → paste & run 20260403152554...sql then 20260513...sql
-# 3. Deploy 6 Edge Functions:
-npx supabase functions deploy market-search market-quotes market-chart market-news ai-insights portfolio-snapshot --project-ref <id>
-# 4. Set secrets (hosted):
-npx supabase secrets set GEMINI_API_KEY=... OPENAI_API_KEY=... SUPABASE_SERVICE_ROLE_KEY=... --project-ref <id>
-# or Dashboard → Edge Functions → Secrets
-# 5. Update frontend/.env:
-# VITE_SUPABASE_URL=https://<id>.supabase.co
-# VITE_SUPABASE_ANON_KEY=<anon>
-# VITE_SUPABASE_PROJECT_ID=<id>
-cd frontend && npm run dev
+npx supabase link --project-ref <id>
+npx supabase db push
+npx supabase functions deploy market-search market-quotes market-chart market-news ai-insights portfolio-snapshot market-sync key-moments run-briefings parse-statement check-alerts sentiment-sync --project-ref <id>
+npx supabase secrets set GEMINI_API_KEY=... FINNHUB_KEY=... CRON_SECRET=$(openssl rand -hex 32) --project-ref <id>
+# update frontend/.env VITE_SUPABASE_URL/ANON_KEY
 ```
-Verify: `curl -H "apikey: <anon>" https://<id>.supabase.co/auth/v1/health` → `200`, Studio → Table Editor → 7 tables exist.
 
----
-
-### Option B — Local Backend (Fully Offline, Requires Docker)
-
-**Tested 2026-09-12 on this machine:** `wsl --list` → `Ubuntu Running`, `docker-desktop Stopped` → `docker ps` fails `npipe:////./pipe/dockerDesktopLinuxEngine: cannot find file` → local stack cannot start until Docker Desktop is started (see prerequisites). Hosted backend still works above. Once you start Docker Desktop, follow below — verified steps from a working machine:
+### Option B — Local Backend (Docker)
 
 ```bash
-# Terminal 1 — from repo root:
 cd backend
-npx supabase start
-# Expected output (takes ~30s first time, pulls images):
-#   Started supabase local development setup.
-#   API URL: http://localhost:54321
-#   GraphQL URL: http://localhost:54321/graphql/v1
-#   DB URL: postgresql://postgres:postgres@localhost:54322/postgres
-#   Studio URL: http://localhost:54323
-#   Inbucket URL: http://localhost:54324
-#   anon key: eyJh...
-#   service_role key: eyJh...
-
-# Re-print anytime:
-npx supabase status
-# Migrations run automatically from backend/supabase/migrations/ — verify in Studio: http://localhost:54323 → Table Editor → 7 tables
-
-# Serve Edge Functions locally (verify_jwt=false in config.toml:25-53, so no JWT needed locally):
+npx supabase start # → API http://localhost:54321, Studio http://localhost:54323
 npx supabase functions serve --env-file ../frontend/.env --no-verify-jwt
-# → Watching ../frontend/.env, functions at http://localhost:54321/functions/v1/<name>
-# Test a function:
-# curl -X POST http://localhost:54321/functions/v1/market-quotes -H "Content-Type: application/json" -d '{"symbols":["AAPL"]}'
-
-# Terminal 2 — frontend against local:
+# Terminal 2:
 cd frontend
-# backup hosted .env:
-cp .env .env.hosted
-# point to local (use keys from `npx supabase status`):
 cat > .env << 'ENV'
 VITE_SUPABASE_URL="http://localhost:54321"
-VITE_SUPABASE_ANON_KEY="<anon from status>"
-VITE_SUPABASE_PUBLISHABLE_KEY="<anon from status>"
-VITE_SUPABASE_PROJECT_ID="fulgofnlmlmetlgidhup"
-# Optional demo bypass — only if you set BOTH vars (no default baked into build):
-# VITE_ADMIN_EMAIL="admin@example.com"
-# VITE_ADMIN_PASSWORD="your-strong-random-password-here"
+VITE_SUPABASE_ANON_KEY="<anon from npx supabase status>"
 ENV
-npm run dev  # http://localhost:8080 — now hits local DB; Inbucket catches emails at http://localhost:54324
-# Auth → sign up → Inbucket → click confirm link → login; or use admin bypass if you configured VITE_ADMIN_* above
+npm run dev # Inbucket http://localhost:54324 catches emails
 ```
 
-**Switch back to hosted:**
-```bash
-cp frontend/.env.hosted frontend/.env
-npx supabase stop      # keeps data; --no-backup to wipe
-# frontend still at http://localhost:8080
-```
-
-> **Google OAuth locally:** Supabase Studio (`http://localhost:54323`) → Auth → URL Configuration → add `http://localhost:8080` to Redirect URLs + Site URL.
-
----
-
-### How to Verify Backend Is Working
-
-```bash
-# Hosted (tested 2026-09-12 — always works, no Docker needed):
-curl -H "apikey: $VITE_SUPABASE_ANON_KEY" https://fulgofnlmlmetlgidhup.supabase.co/auth/v1/health
-# → {"version":"v2.196.0","name":"GoTrue"} (200)
-
-# Local (after `npx supabase start` — see Option B):
-npx supabase status          # shows API URL + anon/service_role keys, containers running
-curl http://127.0.0.1:54321/auth/v1/health -H "apikey: <anon>"
-# → {"version":"v2.196.0"} (200)
-curl -X POST http://127.0.0.1:54321/functions/v1/market-quotes -H "Content-Type: application/json" -d '{"symbols":["AAPL"]}'
-# → {"quotes":{...}} or fallback {} when Yahoo rate-limited
-# Studio: http://127.0.0.1:54323 → Table Editor → verify 7 tables → holdings → INSERT test
-# Mailpit/Inbucket: http://127.0.0.1:54324 → sign up email → no confirmation needed locally
-npx supabase db reset        # re-apply migrations (wipes local data)
-npx supabase logs --tail --project-ref <id> # hosted function logs
-```
-
-### Verified Test Report (2026-09-12 — re-tested with Docker Desktop running)
-
-| Check | Command | Result |
-|-------|---------|--------|
-| Hosted auth | `curl -H apikey:<anon> https://fulgofnlmlmetlgidhup.supabase.co/auth/v1/health` | `200 GoTrue v2.196.0` ✅ |
-| Hosted DB RLS | `supabase.from('holdings').select('*').limit(1)` (anon) | `42501 permission denied` → RLS ok ✅ |
-| Hosted signUp | `supabase.auth.signUp` (`Str0ng!P@ssw0rd…`) | Created `user id 101a46e...` ✅, next `signIn` → `email_not_confirmed` (Dashboard Auth → Email → Confirm OFF to skip) |
-| Local Docker | `docker ps` / `wsl --list --verbose` | Initially `docker-desktop Stopped` → `failed to connect to npipe` → started Docker Desktop (`powershell Start-Process Docker Desktop.exe`) → `docker-desktop Running`, `docker ps` shows `supabase_*` containers ✅ |
-| Local backend start | `cd backend && npx supabase start` (after fixing missing `functions/ai-insights/import_map.json` → `{ "imports":{} }`) | `Applying migration 20260403152554...`, `20260513045832...`, `Started supabase local development setup` `EXIT:0` ✅ |
-| Local API | `curl http://127.0.0.1:54321/auth/v1/health -H apikey: sb_publishable_...` | `200 GoTrue v2.196.0` ✅ |
-| Local DB (local keys) | `sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH` at `http://127.0.0.1:54321` — `supabase.auth.signUp` + `signIn` + `holdings upsert/select/delete` | `signUp user 583eb728…`, `signIn ok session`, `upsert ok`, `rows 1`, `cleanup ok` — no `email_not_confirmed` locally ✅ |
-| Frontend build | `cd frontend && npm run build` | `1,259 kB` `EXIT:0` ✅ (2690 modules, 6.33s) |
-| Edge Functions (local) | `ls backend/supabase/functions/` (6 fns) + `npx supabase functions serve --env-file ../frontend/.env` | Functions served at `http://127.0.0.1:54321/functions/v1/*` (verify_jwt=false locally) ✅ |
-
-**Note on fix:** Initial `npx supabase start` failed `ENOENT: import_map.json` — fixed by creating `backend/supabase/functions/ai-insights/import_map.json` (`{ "imports": {} }`). Also `docker-desktop` was `Stopped` until Docker Desktop started — now `Running`. Local backend is fully tested; hosted remains the default for CI/production.
+Switch back: `cp .env.hosted .env && npx supabase stop`.
 
 ---
 
 ## 📜 Available Scripts
 
-All run inside `frontend/` (`frontend/package.json:6-14`):
+Inside `frontend/` (`frontend/package.json:6`):
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Vite dev server — `http://localhost:8080`, HMR, `/api` proxy |
-| `npm run build` | Production build to `dist/` (`vite build`) |
-| `npm run build:dev` | Build in development mode (`--mode development`) |
-| `npm run preview` | Preview production build locally |
-| `npm run lint` | ESLint on entire repo (`eslint .`) |
-| `npm run test` | Vitest run once (`frontend/vitest.config.ts:7` → jsdom, globals, `src/test/setup.ts`) |
-| `npm run test:watch` | Vitest watch mode |
+| `npm run dev` | Vite dev — `http://localhost:8080`, HMR |
+| `npm run build` | Production → `dist/` (3106 modules, ~8s, code-split 12 chunks) |
+| `npm run preview` | Preview `dist/` |
+| `npm run lint` | ESLint (0 errors, 35 warnings) |
+| `npm test` | Vitest jsdom (4 suites, 23/23) |
+| `npm run test:watch` | Watch mode |
 
-Supabase CLI (from `backend/`):
+Supabase:
+
 ```bash
 npx supabase start|stop|status
 npx supabase functions serve --env-file ../frontend/.env
 npx supabase functions deploy <name> --project-ref <id>
-npx supabase db reset   # re-apply migrations locally
+npx supabase db reset
 npx supabase gen types typescript --local > ../frontend/src/integrations/supabase/types.ts
 ```
 
@@ -360,238 +362,157 @@ npx supabase gen types typescript --local > ../frontend/src/integrations/supabas
 ```
 mevest-africa-vault/
 ├── README.md
-├── TRANSFORMATION_IMPLEMENTATION.md
-├── package-lock.json              # empty root lock — use frontend/package-lock.json
-├── backend/
-│   └── supabase/
-│       ├── config.toml            # project_id, ports, 6 functions (verify_jwt=false)
-│       ├── migrations/
-│       │   ├── 20260403152554_90b9df2b-...sql  # profiles, holdings, watchlist_items, user_settings
-│       │   └── 20260513045832_2190e589-...sql  # portfolio_transactions, snapshots, user_api_keys
-│       └── functions/
-│           ├── ai-insights/       # agentic AI (11 tools, Gemini/OpenAI, max 5 iterations)
-│           ├── market-search/     # Yahoo Finance global search
-│           ├── market-quotes/     # batch quotes (≤50 symbols, retry)
-│           ├── market-chart/      # OHLCV history 1d–5y
-│           ├── market-news/       # news + sentiment + thumbnails
-│           └── portfolio-snapshot/# cron snapshot → portfolio_snapshots
+├── transformation.md                # 10x plan v2 (800+ lines, 5-source research)
+├── backend/supabase/
+│   ├── config.toml                  # project_id, ports, 9 functions
+│   ├── migrations/
+│   │   ├── 20260403152554...sql      # profiles, holdings, watchlist_items, user_settings
+│   │   ├── 20260513045832...sql      # transactions, snapshots, api_keys
+│   │   ├── 20260913000000_market_data_core.sql   # price_history, symbols_meta, corporate_actions, key_moments, news_cache, briefings, presets, kenya_rates, alerts, pushes, track_records, learning
+│   │   └── 20260914000000_v2_extensions.sql      # sentiment, fees_ledger, investment_goals, transactions (FIFO/WAC), ideas, alert extensions
+│   └── functions/
+│       ├── ai-insights/             # 11 tools, citational, streams SSE, 5 iterations, GEMINI→OpenAI→OpenRouter priority
+│       ├── market-search/quotes/chart/news  # Yahoo proxy + Finnhub fallbacks
+│       ├── portfolio-snapshot/       # cron → portfolio_snapshots
+│       ├── market-sync/             # Finnhub→TwelveData→Yahoo cascade, triggers key-moments + check-alerts, NSE .NR note
+│       ├── key-moments/             # AI explains move (>2% or 1% own), citations [1]
+│       ├── run-briefings/           # cron 15m, WhatsApp stub, briefing_results
+│       ├── parse-statement/         # vision extract (JWT required), confirm-before-save
+│       ├── check-alerts/            # price_above/below + webhook + multi-condition + watchlist_id
+│       └── sentiment-sync/          # HF ProsusAI/finbert → news_cache.sentiment + symbol_sentiment
 └── frontend/
-    ├── .env                       # local env (gitignored, see .env.example)
-    ├── .env.example               # full template with all vars documented
-    ├── package.json               # scripts & deps
-    ├── vite.config.ts             # dev server, alias @ → ./src
-    ├── vitest.config.ts           # jsdom, setupFiles src/test/setup.ts
-    ├── tailwind.config.ts
-    ├── tsconfig.json / tsconfig.app.json / tsconfig.node.json
-    ├── index.html                 # entry → /src/main.tsx
-    ├── public/
-    └── src/
-        ├── App.tsx                # providers + BrowserRouter + AppRoutes (auth gate)
-        ├── main.tsx
-        ├── index.css
-        ├── vite-env.d.ts
-        ├── pages/                 # 13 pages
-        │   ├── Index.tsx          # root layout — Sidebar + Topbar + routing
-        │   ├── DashboardPage.tsx
-        │   ├── PortfolioPage.tsx
-        │   ├── MarketsPage.tsx
-        │   ├── ScreenerPage.tsx
-        │   ├── WatchlistPage.tsx
-        │   ├── NewsFeedPage.tsx
-        │   ├── AnalyticsPage.tsx
-        │   ├── CalendarPage.tsx
-        │   ├── SettingsPage.tsx
-        │   ├── AuthPage.tsx
-        │   ├── ResetPasswordPage.tsx
-        │   └── NotFound.tsx
-        ├── components/
-        │   ├── AiChatWidget.tsx
-        │   ├── AiInsightsPanel.tsx
-        │   ├── LiveSearchInput.tsx
-        │   ├── AddHoldingModal.tsx
-        │   ├── NavLink.tsx
-        │   ├── layout/Sidebar.tsx, Topbar.tsx
-        │   └── ui/*               # shadcn/ui primitives
-        ├── context/
-        │   ├── AuthContext.tsx
-        │   ├── PortfolioContext.tsx
-        │   ├── WatchlistContext.tsx
-        │   ├── RealtimeMarketContext.tsx  # 30s polling, live quotes
-        │   └── ThemeContext.tsx
-        ├── integrations/supabase/
-        │   ├── client.ts          # singleton, placeholder detection
-        │   └── types.ts           # generated DB types
-        ├── lib/
-        │   ├── api/market.ts      # marketApi: search/quotes/chart/news
-        │   └── utils.ts
-        ├── data/market-data.ts
-        ├── hooks/
-        └── test/setup.ts, example.test.ts
+    ├── .env/.env.example
+    ├── vite.config.ts               # alias @ → ./src, manualChunks vendor/charts/ui/supabase
+    ├── vitest.config.ts
+    ├── index.html                   # manifest + theme-color
+    ├── public/manifest.webmanifest  # PWA installable, standalone, #0ea5e9
+    ├── public/sw.js                 # shell cache, stale-while-revalidate
+    ├── src/
+    │   ├── App.tsx                  # QueryClient + Theme/Auth/Realtime/Currency/Language providers + 12 routes
+    │   ├── main.tsx                 # + serviceWorker.register
+    │   ├── pages/                   # 13 pages (Index layout + 12)
+    │   │   ├── DashboardPage.tsx    # 638 lines — bento glass, health radial, briefing, pulse, ESG, cashflow
+    │   │   ├── PortfolioPage.tsx    # 519 lines — rebalancer, dividend projection, what-if, Fees/Goals
+    │   │   ├── AnalyticsPage.tsx    # 501 lines — frontier, Monte Carlo, heatmap, drawdown, factors
+    │   │   ├── MarketsPage.tsx      # 735 lines — ticker tape, breadth, AI summary, comparison, 2-chart
+    │   │   ├── ScreenerPage.tsx     # 465 lines — NL + Pine-lite + advanced + gallery + backtest
+    │   │   ├── CalendarPage.tsx     # 424 lines — earnings audio stub + dividends + IPO/splits + countdown
+    │   │   ├── NewsFeedPage.tsx     # 350 lines — sentiment filter + AI summarizer + reliability + bookmarks
+    │   │   ├── WatchlistPage.tsx    # 235 lines — alerts inline + notes + AI score + sort
+    │   │   ├── CommunityPage.tsx    # 176 lines — tiers + copy + Ideas publish + comments
+    │   │   ├── LearnPage.tsx        # 243 lines — 4 modules + 3 calculators + streak/XP/certificate
+    │   │   ├── SettingsPage.tsx     # 373 lines — 8 tabs + playground + export + theme builder
+    │   │   ├── AuthPage.tsx, ResetPasswordPage.tsx, Index.tsx, NotFound.tsx
+    │   ├── components/
+    │   │   ├── KeyMomentsCard.tsx + RatesComparator.tsx + PriceAlertModal.tsx
+    │   │   ├── PortfolioImportWizard.tsx (CSV + vision + nat-lang parse)
+    │   │   ├── SuggestedPrompts.tsx + FeesTracker.tsx + GoalsTracker.tsx
+    │   │   ├── PredictionEmbed.tsx + GovTrackerMock.tsx + layout/Sidebar, Topbar
+    │   │   └── ui/*                 # shadcn 30+ primitives
+    │   ├── context/                  # Auth, Portfolio, Watchlist, RealtimeMarket (Realtime push), Currency (KES/USD + usdKes), Language (en/sw), Theme
+    │   ├── lib/
+    │   │   ├── api/market.ts        # marketApi search/quotes/chart/news
+    │   │   ├── analytics/riskMetrics.ts (7 fns) + extendedMetrics.ts (twrr/fifo/wac/cost/regime) + indicators.ts (sma/ema/rsi/bollinger/macd) + pineLite.ts
+    │   │   ├── currency.ts + push.ts + utils.ts
+    │   ├── integrations/supabase/
+    │   │   ├── client.ts            # placeholder detection, isSupabaseConfigured()
+    │   │   └── types.ts             # 18 tables typed
+    │   ├── data/market-data.ts
+    │   └── test/
+    └── dist/                        # build output (12 chunks, ~1.3M)
 ```
 
-### Pages (`frontend/src/pages/`)
+---
 
-| File | Description |
-|------|-------------|
-| `DashboardPage.tsx` | Portfolio stats, performance chart, allocation pie, market movers, risk metrics, AI insights |
-| `PortfolioPage.tsx` | Holdings table, sector breakdown, performance metrics |
-| `MarketsPage.tsx` | Tabs: Charts (candlestick/line 1D–5Y), Heatmap (sector treemap), Watch (live ticker) |
-| `ScreenerPage.tsx` | Global screener — live search, filters (Type/Exchange/Performance/Sector), sorting, pagination |
-| `WatchlistPage.tsx` | Starred assets — live price cards, sparklines, detail table |
-| `NewsFeedPage.tsx` | Financial news — category filter, sentiment, thumbnails |
-| `AnalyticsPage.tsx` | Sharpe, Beta, drawdown, sector correlation |
-| `CalendarPage.tsx` | Earnings & economic events |
-| `SettingsPage.tsx` | Profile, preferences, API key management |
-| `AuthPage.tsx` | Email/password + Google OAuth, shows setup hint if env missing (`AuthPage.tsx:112`) |
-| `ResetPasswordPage.tsx` | Password reset |
-| `Index.tsx` | Authenticated layout (Sidebar + Topbar) |
-| `NotFound.tsx` | 404 |
+## 🗄️ Database Schema (13 Tables, RLS Everywhere)
 
-### Other key files
+All `ENABLE ROW LEVEL SECURITY`, policies `auth.uid() = user_id` (anon read where safe).
 
-| File | Description |
-|------|-------------|
-| `frontend/src/components/AiChatWidget.tsx` | Floating chat — streams markdown, tool status, at `VITE_SUPABASE_URL/functions/v1/ai-insights` |
-| `frontend/src/lib/api/market.ts` | Wraps `supabase.functions.invoke()` with try/catch fallbacks |
-| `frontend/src/context/RealtimeMarketContext.tsx` | Polls quotes every 30s, simulated micro-movements |
-| `frontend/src/App.tsx:18-48` | `AppRoutes` — shows spinner while `useAuth().loading`, otherwise `AuthPage` or `Index` |
+| Table | Purpose | Key columns | Policy |
+|-------|---------|-------------|--------|
+| `profiles` | Auto on signup `handle_new_user` trigger | `id FK auth.users`, `full_name`, `email`, `currency USD`, `timezone Africa/Nairobi` | Own row |
+| `holdings` | Portfolio positions | `user_id UNIQUE(user_id,symbol)`, `symbol`, `name`, `type`, `shares`, `cost_basis`, `country` | Own rows |
+| `watchlist_items` | Starred | `UNIQUE(user_id,symbol)` | Own rows |
+| `user_settings` | JSON prefs | `user_id UNIQUE`, `settings JSONB` | Own row |
+| `portfolio_transactions` | Append-only buy/sell/dividend/split | `symbol`, `type CHECK`, `shares`, `price`, `fees`, `executed_at` | Own rows |
+| `portfolio_snapshots` | Daily history for charts | `UNIQUE(user_id,snapshot_date)`, `total_value`, `holdings_json` | Own rows |
+| `user_api_keys` | Isolated keys | `UNIQUE(user_id,provider)`, `key_value`, `status`, `last_tested_at` | Own rows |
+| **v2** `price_history` | OHLCV `PRIMARY(symbol,ts,interval)` | `open/high/low/close/volume/source` | Anon read |
+| **v2** `symbols_meta` | Fundamentals cache | `market_cap`, `pe_ratio`, `dividend_yield`, `is_sharia_compliant`, etc. | Anon read |
+| **v2** `corporate_actions` | Dividends/book-closure/splits/earnings | `FK symbols_meta`, `action_type IN (...)`, `ex_date`, `amount` | Anon read |
+| **v2** `key_moments` | AI explains move | `symbol`, `change_pct`, `summary`, `sources JSONB` | Anon read |
+| **v2** `news_cache` + `symbol_sentiment` | News + FinBERT sentiment (`positive/negative/neutral`, score) | `sentiment`, `sentiment_score` | Anon read |
+| **v2** `scheduled_briefings` / `briefing_results` | Nat-lang tasks, delivered in_app/email/whatsapp | `prompt`, `schedule_cron`, `delivery`, `active` | Own rows |
+| **v2** `screener_presets` | Saved screens | `UNIQUE(user_id,name)`, `filters JSONB` | Own rows |
+| **v2** `kenya_rates` | CBK T-Bill/MMF/USDKES | `UNIQUE(instrument,as_of)`, `rate_pct` | Anon read |
+| **v2** `price_alerts` | Alerts + webhook (`webhook_url`), multi-condition (`extra_conditions`), watchlist (`watchlist_id`) | `condition IN (...)`, `threshold` | Own rows |
+| **v2** `push_subscriptions` | Web Push | `endpoint UNIQUE`, `keys JSONB` | Own rows |
+| **v2** `public_track_records` | Verified leaderboard | `display_name`, `opted_in`, `ytd_return_pct` | Read opted-in |
+| **v2** `learning_progress` | Module badges | `UNIQUE(user_id,module_id)`, `completed`, `score` | Own rows |
+| **v2** `fees_ledger` | Brokerage/fees | `fee_type`, `amount`, `currency KES` | Own rows |
+| **v2** `investment_goals` | M-Pesa goals | `title`, `target_amount`, `current_amount`, `deadline` | Own rows |
+| **v2** `transactions` | FIFO/WAC lots | `symbol`, `side IN buy/sell`, `shares`, `price`, `fees` | Own rows |
+| **v2** `ideas` | Community Ideas | `symbol`, `title`, `body`, `sentiment` | Anon read, own write |
 
 ---
 
-## 🗄️ Database Schema
+## ⚡ Edge Functions (8 + 1 Cron)
 
-All tables have **RLS enabled** — users access only `auth.uid() = user_id` (or `id` for `profiles`). See `backend/supabase/migrations/`.
+| Function | Verify JWT | What it does |
+|----------|------------|--------------|
+| `ai-insights` | **Yes** | 11 tools, 5-iteration loop, GEMINI→OpenAI→OpenRouter, streams SSE, `CITATION_POLICY` (source + timestamp) `backend/supabase/functions/ai-insights/index.ts:499` |
+| `market-search` | No | Yahoo search → `{symbol, name, exchange, type, sector}` |
+| `market-quotes` | No | Batch ≤50, retry, Finnhub fallback |
+| `market-chart` | No | OHLCV 1d–5y |
+| `market-news` | No | News aggregator |
+| `portfolio-snapshot` | No (`x-cron-secret`) | Cron → `portfolio_snapshots` |
+| `market-sync` | No (`x-cron-secret`) | **Finnhub→TwelveData→Yahoo** cascade, upserts `price_history`, chains `key-moments` + `check-alerts`, `.NR` NSE note |
+| `key-moments` | No (`x-cron-secret`) | Calls HF/LLM to explain >2% move, citations `[1]` |
+| `run-briefings` | No (`x-cron-secret`) | Cron 15m, `scheduled_briefings` → `briefing_results` + WhatsApp stub |
+| `parse-statement` | **Yes** | Vision extract (strict JSON `symbol/shares/cost_basis/currency`, null if unreadable, never guess) |
+| `check-alerts` | No (`x-cron-secret`) | Checks `active` alerts (direct + `WATCHLIST` + `watchlist_id`), **webhook POST**, multi-condition AND, `triggered_at` |
+| `sentiment-sync` | No (`x-cron-secret`) | Cron 15m, `ProsusAI/finbert` → `news_cache` + `symbol_sentiment` (fallback keyword) |
 
-### `profiles` (auto-created on signup via trigger `handle_new_user`)
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK | FK `auth.users.id`, cascade |
-| full_name | text | From `raw_user_meta_data` |
-| email | text |  |
-| avatar_url | text |  |
-| currency | text | Default `USD` |
-| timezone | text | Default `Africa/Nairobi` |
-| created_at | timestamptz | Default `now()` |
-
-Policies: `SELECT`/`UPDATE`/`INSERT` own row.
-
-### `holdings`
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK | `gen_random_uuid()` |
-| user_id | UUID | FK `auth.users.id`, `UNIQUE(user_id, symbol)` |
-| symbol | text | e.g. `AAPL`, `BTC-USD` |
-| name | text |  |
-| type | text | `stock`/`crypto`/`etf`/`bond`/… default `stock` |
-| shares | numeric |  |
-| cost_basis | numeric | Per unit |
-| country | text | Default `US` |
-| created_at | timestamptz |  |
-
-Policy: `FOR ALL` own rows.
-
-### `watchlist_items`
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK |  |
-| user_id | UUID | `UNIQUE(user_id, symbol)` |
-| symbol | text |  |
-| added_at | timestamptz |  |
-
-### `user_settings`
-
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK |  |
-| user_id | UUID | `UNIQUE` |
-| settings | JSONB | Generic prefs, default `'{}'` |
-| updated_at | timestamptz |  |
-
-### `portfolio_transactions` (migration `20260513`)
-
-Append-only log for `buy`/`sell`/`dividend`/`split`/`transfer`.
-
-| Column | Type |
-|--------|------|
-| id | UUID PK |
-| user_id | UUID |
-| symbol | text |
-| type | text `CHECK IN ('buy','sell','dividend','split','transfer')` |
-| shares, price, fees | numeric (`fees` default 0) |
-| currency | text default `USD` |
-| executed_at | timestamptz default `now()` |
-| notes | text |
-| created_at | timestamptz |
-
-Index `idx_tx_user_date(user_id, executed_at DESC)`.
-
-### `portfolio_snapshots`
-
-Daily history for charts (`UNIQUE(user_id, snapshot_date)`).
-
-| Column | Type |
-|--------|------|
-| id | UUID PK |
-| user_id | UUID |
-| snapshot_date | date default `now()::date` |
-| total_value, cost_basis, cash_balance | numeric |
-| currency | text |
-| holdings_json | jsonb |
-| created_at | timestamptz |
-
-Index `idx_snap_user_date`.
-
-### `user_api_keys` (isolated from `user_settings`)
-
-| Column | Type |
-|--------|------|
-| id | UUID PK |
-| user_id | UUID |
-| provider | text |
-| key_value | text |
-| status | `untested`/`connected`/`invalid` |
-| last_tested_at | timestamptz |
-| created_at, updated_at | timestamptz |
-
-`UNIQUE(user_id, provider)`, index `idx_uak_user`.
+Declared `backend/supabase/config.toml:25-81` (`verify_jwt` per function). Client wrappers `frontend/src/lib/api/market.ts:51`.
 
 ---
 
-## ⚡ Edge Functions
+## 📦 PWA
 
-All declared in `backend/supabase/config.toml:25-53` with `verify_jwt = false` for local dev (set `true` in production + validate JWT in function).
+- `frontend/public/manifest.webmanifest` — `standalone`, `#0ea5e9`, `Mevest — Africa + Global Investing`
+- `frontend/public/sw.js` — shell `Cache mevest-v2-1`, stale-while-revalidate for `/assets/`
+- `frontend/src/main.tsx:6` — `navigator.serviceWorker.register('/sw.js')` on load
+- `frontend/index.html:13` — `<link rel="manifest">` + `<meta name="theme-color" content="#0ea5e9">`
 
-| Function | Entrypoint | Description |
-|----------|------------|-------------|
-| `ai-insights` | `functions/ai-insights/index.ts` | Agentic loop (≤5 iterations), 11 tools: `get_stock_quote`, `get_market_news`, `search_assets`, `add_holding`, `remove_holding`, `add_to_watchlist`, `remove_from_watchlist`, `get_portfolio_summary`, `get_chart_data`, `compare_stocks`, `get_trending`. Uses `GEMINI_API_KEY`/`OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` for DB writes, streams SSE. |
-| `market-search` | `functions/market-search/index.ts` | Yahoo Finance search → `{symbol, name, exchange, type, sector, industry}`, `type` filter |
-| `market-quotes` | `functions/market-quotes/index.ts` | Batch quotes ≤50 symbols, retry, fields: price/change/volume/marketCap/PE/EPS/dividend/52w range; `trending` mode |
-| `market-chart` | `functions/market-chart/index.ts` | OHLCV history `1d`–`5y` with interval mapping, returns `t/o/h/l/c/v` (`frontend/src/lib/api/market.ts:33`) |
-| `market-news` | `functions/market-news/index.ts` | News aggregator: `general`/`crypto`/`tech`/`forex`/`earnings`, ticker-specific, sentiment + thumbnails |
-| `portfolio-snapshot` | `functions/portfolio-snapshot/index.ts` | Cron: aggregates holdings → `portfolio_snapshots` + metrics (Sharpe, drawdown, beta, CAGR) |
-
-Client wrappers: `frontend/src/lib/api/market.ts:51-103` (`search`, `getQuotes`, `getChart`, `getNews`) — all catch and return `[]`/`{}` on error.
+Installable on Android/iOS, works offline with cached `price_history`.
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features — By Section (v2)
 
-1. **Real-Time Market Data** — 30s polling via `RealtimeMarketContext`, Yahoo Finance proxy
-2. **Global Search** — 45+ exchanges, type filter, debounced `LiveSearchInput`
-3. **Agentic AI Chatbot** — streams markdown, executes 11 portfolio/watchlist tools
-4. **AI Insights** — health score, risk, recommendations on Dashboard
-5. **Multi-Asset Portfolio** — stocks, crypto, ETFs, bonds, T-bills, MMFs, real estate, pension; Kenyan-specific fields (NSE, T-bill, MMF)
-6. **Interactive Charts** — candlestick/line, 1D–5Y (`market-chart`)
-7. **Screener** — filters + sorting + pagination over live search
-8. **Watchlist** — sparklines, live prices
-9. **News Feed** — category + ticker news with sentiment
-10. **Theme** — light/dark + system (`ThemeContext`)
-11. **Responsive** — collapsible Sidebar with hamburger
-12. **Auth** — email/password + Google OAuth (`AuthContext`, `AuthPage.tsx`)
-13. **Secure API Keys** — `user_api_keys` table, managed in Settings
+**Dashboard:** health radial, sparkline net worth, cash-flow bar, AI briefing, goals ring, ESG badge, pulse (VIX+breadth+NSE), regime banner, Key Moments cited, prediction+gov embeds.
+
+**Portfolio:** rebalancer (target vs actual sliders + trades), dividend projection 12M, what-if simulator (`amt KES` → added shares + new yield), fees donut (TER), goals progress (M-Pesa `+1000`), import CSV/image/**nat-lang**, KES/USD toggle, tax-lots export.
+
+**Analytics:** 12 KPIs (FIFO/WAC/TWRR/cost-adj Sharpe), CSV export, efficient frontier, Monte Carlo 100×30 GBM fan (p10/p50/p90), correlation heatmap, drawdown underwater, factor exposures.
+
+**Markets:** ticker tape infinite, breadth (adv/decl), AI summary with citations, charts (MA/BB/RSI/volume), comparison overlay (normalized, Pearson), 2-chart side-by-side, NSE indicative banner, alert modal (webhook/multi/watchlist), heatmap, market watch sparklines.
+
+**Screener:** NL input (`PE<10 and div>4%` → filters), Pine-lite (`SMA(close,20) > SMA(close,50) AND RSI<70`), advanced min-max (MktCap/PE/Div/Perf% + Sharia), preset gallery 6 cards, backtest top-5 1Y, bulk export to watchlist.
+
+**Calendar:** earnings (summary cards + audio stub ▶ + AI highlights + transcript), dividends (NSE book-closure, holdings amber, filing PDF, **Alert 3d before**, premarket filter), economic (impact filter), **IPO lane** 6 cards + Google Calendar sync, **splits** lane, ex-div countdown ring.
+
+**News Feed:** sentiment filter (All/Bullish/Bearish via FinBERT), AI summarizer per article, source reliability badge (0-100), bookmarks (`localStorage`), category filter, trending symbols.
+
+**Watchlist:** star + `LIVE` price, sparkline, **alert bell** inline (modal → `mev_alerts`), **notes** textarea per symbol (`mev_notes`), **AI score** (Strong Buy…Sell) + Sort by AI.
+
+**Community:** **tiers** Gold/Silver/Bronze (Crown/Medal/Trophy), **Copy top 3** holdings clipboard, **Ideas** publish (symbol/title/body → `ideas`) + collapsible comments + likes, leaderboard weights-on-click.
+
+**Learn:** 4 modules (book-closure → T-Bill vs MMF → P/E → diversification, badges `learning_progress`), **3 calculators** (Compound/Retirement/Mortgage with charts), **XP + streak** weekly dots + Flame, **certificate** modal after 4.
+
+**Settings:** 8 tabs + **API Playground** (live try `market-quotes`/`market-search` JSON viewer), **Export Data** (holdings+watchlist+alerts/notes → `mevest-export-YYYY-MM-DD.json`), **Appearance** (color picker → `localStorage mev_primary` CSS `--primary` preview).
+
+**Global:** KES/USD (`CurrencyContext` + `kenya_rates` `USDKES`), EN/SW (`LanguageContext` sidebar toggle), push + WhatsApp alerts, cited AI everywhere (`CITATION_POLICY`), offline PWA.
 
 ---
 
@@ -599,14 +520,12 @@ Client wrappers: `frontend/src/lib/api/market.ts:51-103` (`search`, `getQuotes`,
 
 ```bash
 cd frontend
-npm run test        # single run — jsdom, globals, setupFiles src/test/setup.ts (vitest.config.ts:7-11)
-npm run test:watch  # watch mode
-# Playwright (if configured): npx playwright test
+npm test        # jsdom, 4 suites 23/23 (validation, example, market-data, portfolio localStorage fallback)
+npm run test:watch
+npx playwright test # e2e if configured
 ```
 
-Vitest matches `src/**/*.{test,spec}.{ts,tsx}` (`vitest.config.ts:11`). Path alias `@` → `./src` (`vitest.config.ts:14`, `vite.config.ts:21-24`).
-
-Example: `frontend/src/test/example.test.ts`, setup `frontend/src/test/setup.ts` (imports `@testing-library/jest-dom`).
+Vitest `src/**/*.{test,spec}.{ts,tsx}` (`vitest.config.ts:11`), `@` alias, `src/test/setup.ts` (`@testing-library/jest-dom` + `matchMedia` mock).
 
 ---
 
@@ -614,20 +533,19 @@ Example: `frontend/src/test/example.test.ts`, setup `frontend/src/test/setup.ts`
 
 ```bash
 cd frontend
-npm run build    # → dist/ (Vite)
-npm run preview  # serve dist/ locally to verify
+npm run build   # → dist/ (Vite, 3106 modules, 12 chunks, ~1.3M, 8s)
+npm run preview # serve dist/ locally
 
-# Env for prod — set on host (Vercel/Netlify/Cloudflare):
-# VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_SUPABASE_PROJECT_ID
-# Do NOT expose service_role or AI keys to frontend — set as Supabase Edge Function secrets.
+# prod env (Vercel/Netlify): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_VAPID_PUBLIC_KEY
+# never expose service_role / CRON_SECRET / AI keys to frontend — set as Supabase secrets
 
-# Supabase hosted deploy:
 npx supabase link --project-ref <id>
 npx supabase functions deploy --project-ref <id>
-npx supabase secrets set GEMINI_API_KEY=... --project-ref <id>
+npx supabase secrets set GEMINI_API_KEY=... FINNHUB_KEY=... CRON_SECRET=... HF_API_KEY=... WHATSAPP_TOKEN=... --project-ref <id>
 ```
 
-Docker example (from `TRANSFORMATION_IMPLEMENTATION.md`):
+Docker (from `Dockerfile` if present):
+
 ```dockerfile
 FROM node:18-alpine AS builder
 WORKDIR /app
@@ -635,41 +553,34 @@ COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
-
 FROM node:18-alpine
-WORKDIR /app
 COPY --from=builder /app/dist ./dist
-# serve with nginx / vite preview / static host
 ```
 
 ---
 
 ## 🔧 Troubleshooting
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| Console `[MEVEST] Supabase is not configured` | `VITE_SUPABASE_ANON_KEY` still `your_supabase_anon_key` / `test-key` / `placeholder` | Fill `frontend/.env` with real key, restart `npm run dev` (`client.ts:10-15` checks this) |
-| `supabase.functions.invoke` returns `[]`/`{}` | Env not set or functions not running | Check `frontend/src/lib/api/market.ts:60-74` logs; for local: `npx supabase functions serve --env-file ../frontend/.env` |
-| `npx supabase start` fails | Docker not running | Start Docker Desktop, `docker ps` should work |
-| Port `8080` in use | Another dev server | Change `frontend/vite.config.ts:9` or `npm run dev -- --port 5173` |
-| OAuth redirect loop | Redirect URL not whitelisted | Supabase Dashboard/Studio → Auth → URL Configuration → add `http://localhost:8080` |
-| `auth`/`profiles` RLS errors | User not authenticated or policy mismatch | Ensure logged in; check `backend/supabase/migrations/20260403*.sql:12-15` policies |
-| Market data empty locally but hosted works | Local functions not served | Terminal 1 must keep `supabase functions serve` running |
+| Symptom | Fix |
+|---------|-----|
+| `[MEVEST] Supabase is not configured` | Fill `frontend/.env` anon key, restart `npm run dev` (`client.ts:10`) |
+| `invoke` returns `[]` | Functions not running — `npx supabase functions serve --env-file ../frontend/.env` locally; check `market.ts:60` logs |
+| `docker ps` fails | Start Docker Desktop, enable WSL integration |
+| Port 8080 in use | `frontend/vite.config.ts:9` or `--port 5173` |
+| OAuth loop | Add `http://localhost:8080` to Supabase Auth → URL Configuration |
+| RLS 42501 | Ensure logged in; check `migrations/*.sql` policies |
+| `channel is not a function` in tests | Mock already guards with `client.channel?` (`RealtimeMarketContext.tsx:165`) |
+| PWA not installing | `npm run build` + `npm run preview` required; `chrome://inspect/#service-workers` |
 
-**Useful checks:**
-```bash
-# Is env wired?
-grep VITE_SUPABASE frontend/.env
-# Does client see it?
-# Browser console → import { isSupabaseConfigured } from '@/integrations/supabase/client'; isSupabaseConfigured()
+---
 
-npx supabase status          # local URLs + keys
-npx supabase db reset        # re-apply migrations (wipes local data)
-npx supabase logs --tail     # edge function logs (hosted)
-```
+## 📖 Transformation Plan
+
+`transformation.md` (800+ lines) is the 10x plan v2: 5-source competitive intelligence (Google Finance Jun 25 2026, Perplexity Finance, TradingView, 30+ GitHub finance OSS, HF FinBERT/BloombergGPT), scorecard 20→94, feature matrix, build order 15, file-by-file spec (`§3.1`, `§4.1-4.5`, `§5.1-5.3`, `§6.1-6.3`, `§7`, `§8`, `§9`). **Start at `price_history` → sentiment-sync → analytics → screener → charts → alerts v2 → key moments v2 → briefings + nat-lang import.**
 
 ---
 
 ## 📄 License
 
-Built with [Lovable](https://lovable.dev). See repo license if present.
+Built with [Lovable](https://lovable.dev). MIT if no other LICENSE present. Contributions via fork → feature branch → PR.
+
