@@ -5,6 +5,9 @@ import { MARKET, FEAR_GREED, SECTOR_PERFORMANCE, formatMoney, formatPct } from '
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import AiInsightsPanel from '@/components/AiInsightsPanel';
+import KeyMomentsCard from '@/components/KeyMomentsCard';
+import { useCurrency } from '@/context/CurrencyContext';
+import { formatWithCurrency } from '@/lib/currency';
 
 const COLORS = ['hsl(218 90% 66%)', 'hsl(160 60% 52%)', 'hsl(258 89% 76%)', 'hsl(38 95% 55%)', 'hsl(0 76% 58%)', 'hsl(25 95% 55%)'];
 const TIMEFRAMES = [
@@ -14,6 +17,7 @@ const TIMEFRAMES = [
 export default function DashboardPage({ onAddHolding }: { onAddHolding: () => void }) {
   const { holdings } = usePortfolio();
   const { prices, allAssets, isLive } = useRealtimeMarket();
+  const { currency, setCurrency, usdKes } = useCurrency();
   const [timeframe, setTimeframe] = useState('3M');
   const n = holdings.length;
 
@@ -35,11 +39,12 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
   }, 0) : 0;
   const dayChgPct = totalVal > 0 ? (dayChg / totalVal * 100) : 0;
 
+  const conv = (v: number) => currency === 'KES' ? v * usdKes : v;
   const stats = [
-    { label: 'Portfolio Value', val: n ? formatMoney(totalVal) : null, chg: n ? formatPct(dayChgPct) : null, up: dayChgPct >= 0 },
-    { label: 'Total Invested', val: n ? formatMoney(totalCost) : null, chg: 'Cost basis', up: true },
-    { label: 'Total P&L', val: n ? formatMoney(totalPL) : null, chg: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
-    { label: "Today's P&L", val: n ? formatMoney(dayChg) : null, chg: n ? formatPct(dayChgPct) : null, up: dayChgPct >= 0 },
+    { label: 'Portfolio Value', val: n ? formatWithCurrency(conv(totalVal), currency) : null, chg: n ? formatPct(dayChgPct) : null, up: dayChgPct >= 0 },
+    { label: 'Total Invested', val: n ? formatWithCurrency(conv(totalCost), currency) : null, chg: 'Cost basis', up: true },
+    { label: 'Total P&L', val: n ? formatWithCurrency(conv(totalPL), currency) : null, chg: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
+    { label: "Today's P&L", val: n ? formatWithCurrency(conv(dayChg), currency) : null, chg: n ? formatPct(dayChgPct) : null, up: dayChgPct >= 0 },
   ];
 
   const selectedDays = TIMEFRAMES.find(t => t.key === timeframe)?.days || 90;
@@ -83,6 +88,14 @@ export default function DashboardPage({ onAddHolding }: { onAddHolding: () => vo
           ⚠️ Live market data unavailable — showing cached/demo prices. Data may be delayed.
         </div>
       )}
+      <div className="flex items-center gap-2">
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          <button onClick={() => setCurrency('KES')} className={`px-2 py-1 text-[11px] font-semibold ${currency === 'KES' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>KES</button>
+          <button onClick={() => setCurrency('USD')} className={`px-2 py-1 text-[11px] font-semibold ${currency === 'USD' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>USD</button>
+        </div>
+        <span className="text-[10px] text-muted-foreground">1 USD = {usdKes.toFixed(2)} KES</span>
+      </div>
+      {n > 0 && <KeyMomentsCard symbols={holdings.map(h => h.sym)} />}
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {stats.map(s => (

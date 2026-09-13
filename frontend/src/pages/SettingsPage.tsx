@@ -7,6 +7,7 @@ import { User, Bell, Key, Shield, CreditCard, Eye, EyeOff, CheckCircle, XCircle,
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'briefings', label: 'Briefings', icon: Bell },
   { id: 'api', label: 'Data Sources', icon: Key },
   { id: 'security', label: 'Security', icon: Shield },
   { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -23,6 +24,8 @@ const API_PROVIDERS = [
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
   const [tab, setTab] = useState('profile');
+  const [briefings, setBriefings] = useState<Array<{ id: string; prompt: string; schedule_cron: string; delivery: string; active: boolean }>>([]);
+  const [newBriefing, setNewBriefing] = useState({ prompt: '', schedule_cron: '0 6 * * 1-5', delivery: 'in_app' });
 
   // Profile state - loaded from DB
   const [profile, setProfile] = useState({ name: '', email: '', currency: 'USD', timezone: 'Africa/Nairobi' });
@@ -49,6 +52,7 @@ export default function SettingsPage() {
   // Load profile and settings from DB
   useEffect(() => {
     if (!user) return;
+    supabase.from('scheduled_briefings').select('*').eq('user_id', user.id).then(({ data }) => { if (data) setBriefings(data as typeof briefings); });
     const load = async () => {
       const [{ data: profileData }, { data: settingsData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
@@ -302,6 +306,37 @@ export default function SettingsPage() {
           </div>
         );
 
+      case 'briefings':
+        return (
+          <div className="space-y-3">
+            <div className="font-display text-[13px] font-bold">Scheduled AI Briefings</div>
+            <div className="text-[11px] text-muted-foreground">Like Google Finance Tasks — delivered in-app, email, or WhatsApp (Kenya). Runs via run-briefings cron.</div>
+            <div className="space-y-2">
+              <input value={newBriefing.prompt} onChange={e => setNewBriefing(b => ({ ...b, prompt: e.target.value }))} placeholder="Send me a daily pre-market briefing on my NSE banking holdings" className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-xs" />
+              <div className="flex gap-2">
+                <select value={newBriefing.schedule_cron} onChange={e => setNewBriefing(b => ({ ...b, schedule_cron: e.target.value }))} className="bg-secondary border border-border rounded-lg px-2 py-2 text-xs">
+                  <option value="0 6 * * 1-5">Daily 6am EAT (weekdays)</option>
+                  <option value="0 8 * * *">Daily 8am</option>
+                  <option value="0 9 * * 1">Weekly Monday 9am</option>
+                </select>
+                <select value={newBriefing.delivery} onChange={e => setNewBriefing(b => ({ ...b, delivery: e.target.value }))} className="bg-secondary border border-border rounded-lg px-2 py-2 text-xs">
+                  <option value="in_app">In-app</option><option value="email">Email</option><option value="whatsapp">WhatsApp</option>
+                </select>
+                <button onClick={createBriefing} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold">Create</button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {briefings.map(b => (
+                <div key={b.id} className="flex items-center justify-between px-3 py-2 bg-secondary rounded-lg border border-border text-xs">
+                  <div><div className="font-semibold">{b.prompt.slice(0, 60)}</div><div className="text-muted-foreground text-[11px]">{b.schedule_cron} · {b.delivery} · {b.active ? 'active' : 'paused'}</div></div>
+                  <button onClick={async () => { await supabase.from('scheduled_briefings').delete().eq('id', b.id); setBriefings(prev => prev.filter(x => x.id !== b.id)); }} className="text-destructive text-[11px]">Remove</button>
+                </div>
+              ))}
+              {briefings.length === 0 && <div className="text-xs text-muted-foreground text-center py-4">No briefings yet. Create one above.</div>}
+            </div>
+          </div>
+        );
+
       case 'api':
         return (
           <div className="space-y-4">
@@ -521,9 +556,17 @@ export default function SettingsPage() {
     }
   };
 
+  const createBriefing = async () => {
+    if (!user || !newBriefing.prompt.trim()) { toast({ title: 'Enter a prompt' }); return; }
+    const { data, error } = await supabase.from('scheduled_briefings').insert({ user_id: user.id, prompt: newBriefing.prompt, schedule_cron: newBriefing.schedule_cron, delivery: newBriefing.delivery }).select().single();
+    if (error) toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+    else { setBriefings(prev => [...prev, data as typeof briefings[0]]); setNewBriefing({ prompt: '', schedule_cron: '0 6 * * 1-5', delivery: 'in_app' }); toast({ title: 'Briefing created' }); }
+  };
+
   const tabTitles: Record<string, string> = {
     profile: 'Account Settings',
     notifications: 'Notification Preferences',
+    briefings: 'AI Briefings',
     api: 'Data Sources & API Keys',
     security: 'Security & Privacy',
     billing: 'Billing & Subscription',

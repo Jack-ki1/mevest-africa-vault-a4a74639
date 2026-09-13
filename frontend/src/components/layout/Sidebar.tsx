@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Box, Activity, TrendingUp, List, FileText, Settings,
-  Calendar, Star, X, LogOut,
+  Calendar, Star, X, LogOut, Users, GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -26,6 +26,8 @@ const NAV_SECTIONS = [
     label: 'Personal',
     items: [
       { id: 'watchlist', label: 'Watchlist', icon: Star },
+      { id: 'community', label: 'Community', icon: Users },
+      { id: 'learn', label: 'Learn', icon: GraduationCap },
       { id: 'settings', label: 'Settings', icon: Settings },
     ],
   },

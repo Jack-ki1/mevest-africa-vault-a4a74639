@@ -1,10 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EARNINGS_CALENDAR, ECONOMIC_CALENDAR } from '@/data/market-data';
+import { supabase } from '@/integrations/supabase/client';
+import { usePortfolio } from '@/context/PortfolioContext';
 
-const TABS = ['earnings', 'economic'] as const;
+const TABS = ['earnings', 'economic', 'dividends'] as const;
 
 export default function CalendarPage() {
   const [tab, setTab] = useState<typeof TABS[number]>('earnings');
+  const [dividends, setDividends] = useState<Array<{ symbol: string; action_type: string; ex_date: string; amount: number | null }>>([]);
+  const { holdings } = usePortfolio();
+  const heldSyms = holdings.map(h => h.sym);
+  useEffect(() => {
+    supabase.from('corporate_actions').select('symbol,action_type,ex_date,amount').in('action_type', ['dividend','book_closure']).order('ex_date', { ascending: true }).limit(50).then(({ data }) => {
+      if (data) setDividends(data as typeof dividends);
+    });
+  }, []);
   const [earningsWeek, setEarningsWeek] = useState('this');
   const [ecoImpact, setEcoImpact] = useState('all');
 
@@ -37,7 +47,7 @@ export default function CalendarPage() {
           {TABS.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize ${tab === t ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-              {t === 'earnings' ? '📊 Earnings' : '🌐 Economic'}
+              {t === 'earnings' ? '📊 Earnings' : t === 'dividends' ? '💰 Dividends (NSE)' : '🌐 Economic'}
             </button>
           ))}
         </div>
@@ -106,6 +116,35 @@ export default function CalendarPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      ) : tab === 'dividends' ? (
+        <div className="space-y-3.5">
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="px-[15px] py-3 border-b border-border flex items-center gap-2">
+              <span className="font-display text-[13px] font-bold">NSE Dividends & Book Closures</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">Holdings highlighted</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead><tr className="border-b border-border">{['Symbol','Type','Ex Date','Amount'].map(h => (<th key={h} className="p-[9px] px-[11px] text-left text-[10px] font-semibold text-muted-foreground uppercase">{h}</th>))}</tr></thead>
+                <tbody>
+                  {dividends.map(d => {
+                    const isHeld = heldSyms.includes(d.symbol);
+                    return (
+                      <tr key={d.symbol + d.ex_date} className={`border-b border-border/50 ${isHeld ? 'bg-primary/5' : ''}`}>
+                        <td className={`p-[10px] px-[11px] font-mono font-bold ${isHeld ? 'text-primary' : ''}`}>{d.symbol} {isHeld ? '★' : ''}</td>
+                        <td className="p-[10px] px-[11px] capitalize">{d.action_type.replace('_',' ')}</td>
+                        <td className="p-[10px] px-[11px] font-mono">{d.ex_date}</td>
+                        <td className="p-[10px] px-[11px] font-mono">{d.amount != null ? d.amount.toFixed(2) : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                  {dividends.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-muted-foreground">No dividend data — corporate_actions empty until populated.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-3 py-2 text-[10px] text-muted-foreground">Alert 3 days before ex-date via price_alerts engine. Source: NSE filings.</div>
           </div>
         </div>
       ) : (

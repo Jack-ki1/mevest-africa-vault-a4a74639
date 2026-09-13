@@ -183,7 +183,7 @@ export default function AiChatWidget() {
             }`}>
               {m.role === 'assistant' ? (
                 <div className="prose prose-xs prose-invert max-w-none [&_p]:mb-1 [&_ul]:mb-1 [&_li]:mb-0 [&_table]:text-[10px] [&_strong]:text-foreground [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs">
-                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                  <ReactMarkdown>{m.content.replace(/\[(\d+)\]/g, ' <span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary/15 text-primary text-[9px] font-bold">[$1]</span> ')}</ReactMarkdown>
                 </div>
               ) : m.content}
             </div>
@@ -225,6 +225,7 @@ export default function AiChatWidget() {
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
+        <div className="text-[9px] text-muted-foreground text-center mt-1.5">MEVEST AI cites its sources. Verify anything you plan to act on.</div>
       </div>
     </div>
   );

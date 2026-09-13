@@ -9,7 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard', portfolio: 'My Portfolio', analytics: 'Advanced Analytics',
   markets: 'Markets', screener: 'Market Screener',
   calendar: 'Calendar', watchlist: 'My Watchlist',
-  news: 'News Feed', settings: 'Settings',
+  news: 'News Feed', community: 'Community', learn: 'Learn', settings: 'Settings',
 };
 
 function pathToPage(pathname: string): string {

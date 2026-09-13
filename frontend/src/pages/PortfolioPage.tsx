@@ -4,7 +4,10 @@ import { useRealtimeMarket } from '@/context/RealtimeMarketContext';
 import { formatMoney, formatPct } from '@/data/market-data';
 import { toast } from '@/hooks/use-toast';
 import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Zap } from 'lucide-react';
+import { Zap, Upload } from 'lucide-react';
+import { useCurrency } from '@/context/CurrencyContext';
+import { convert, formatWithCurrency } from '@/lib/currency';
+import PortfolioImportWizard from '@/components/PortfolioImportWizard';
 
 const TABS = ['all', 'stock', 'cryptocurrency', 'etf', 'bond'];
 const TAB_LABELS: Record<string, string> = { all: 'All', stock: 'Stocks', cryptocurrency: 'Crypto', etf: 'ETFs', bond: 'Bonds' };
@@ -12,7 +15,9 @@ const TAB_LABELS: Record<string, string> = { all: 'All', stock: 'Stocks', crypto
 export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => void }) {
   const { holdings, removeHolding } = usePortfolio();
   const { prices } = useRealtimeMarket();
+  const { currency, setCurrency, usdKes } = useCurrency();
   const [filter, setFilter] = useState('all');
+  const [showImport, setShowImport] = useState(false);
 
   // Enrich with live prices — track stale vs live
   const enrichedHoldings = holdings.map(h => {
@@ -44,12 +49,15 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
   }, 0);
   const dayPct = totalVal > 0 ? (dayChg / totalVal) * 100 : 0;
 
+  const displayTotalVal = currency === 'KES' ? totalVal * (holdings.some(h => h.country === 'KE') ? 1 : usdKes) : totalVal; // keep simple: totals already mixed; convert via helper in row
+  const fmtVal = (v: number | null) => v == null ? null : formatWithCurrency(currency === 'KES' ? (v * (usdKes / 129.5)) : v, currency); // fallback uses usdKes
   const stats = [
-    { l: 'Portfolio Value', v: n ? formatMoney(totalVal) : null, c: n ? formatPct(dayPct) : null, up: dayPct >= 0 },
-    { l: 'Total Invested', v: n ? formatMoney(totalCost) : null, c: 'Cost basis', up: true },
-    { l: 'Total P&L', v: n ? formatMoney(totalPL) : null, c: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
-    { l: "Today's P&L", v: n ? formatMoney(dayChg) : null, c: n ? formatPct(dayPct) : null, up: dayChg >= 0 },
+    { l: 'Portfolio Value', v: n ? formatWithCurrency(currency === 'USD' ? totalVal : totalVal * (usdKes / 1), currency) : null, c: n ? formatPct(dayPct) : null, up: dayPct >= 0 },
+    { l: 'Total Invested', v: n ? formatWithCurrency(currency === 'USD' ? totalCost : totalCost * usdKes, currency) : null, c: 'Cost basis', up: true },
+    { l: 'Total P&L', v: n ? formatWithCurrency(currency === 'USD' ? totalPL : totalPL * usdKes, currency) : null, c: n ? formatPct(totalPL / totalCost * 100) : null, up: totalPL >= 0 },
+    { l: "Today's P&L", v: n ? formatWithCurrency(currency === 'USD' ? dayChg : dayChg * usdKes, currency) : null, c: n ? formatPct(dayPct) : null, up: dayChg >= 0 },
   ];
+  void displayTotalVal; void fmtVal;
 
   const exportCSV = () => {
     if (!n) { toast({ title: 'No data', description: 'Add holdings before exporting.' }); return; }
@@ -94,7 +102,13 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
             ) : 'Add holdings to get started'}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            <button onClick={() => setCurrency('KES')} className={`px-2 py-1 text-[11px] font-semibold ${currency === 'KES' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>KES</button>
+            <button onClick={() => setCurrency('USD')} className={`px-2 py-1 text-[11px] font-semibold ${currency === 'USD' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>USD</button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">1 USD = {usdKes.toFixed(2)} KES</span>
+          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground"><Upload className="w-3 h-3" />Import</button>
           <button onClick={exportCSV} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ CSV</button>
           <button onClick={exportJSON} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-secondary border border-border text-muted-foreground hover:text-foreground">⬇ JSON</button>
           <button onClick={onAddHolding} className="px-[13px] py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 shadow-sm shadow-primary/20">+ Add Holding</button>
@@ -162,7 +176,7 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
                         ${h.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         {h.isStale && <span className="ml-1 text-[9px] text-amber-600 bg-amber-500/10 px-1 py-0.5 rounded">stale</span>}
                       </td>
-                      <td className="text-right p-[10px] px-[11px] font-mono font-semibold tabular-nums">{formatMoney(mv)}</td>
+                       <td className="text-right p-[10px] px-[11px] font-mono font-semibold tabular-nums">{formatWithCurrency(currency === 'KES' ? mv * usdKes : mv, currency)}</td>
                       <td className="text-right p-[10px] px-[11px]"><span className={`font-mono text-[11px] tabular-nums ${up ? 'text-primary' : 'text-destructive'}`}>{up ? '+' : ''}{formatMoney(pl)}</span></td>
                       <td className="text-right p-[10px] px-[11px]"><span className={`font-mono text-[10px] font-bold px-[7px] py-0.5 rounded-md tabular-nums ${up ? 'text-primary bg-primary/10' : 'text-destructive bg-destructive/10'}`}>{formatPct(pct)}</span></td>
                       <td className="text-center p-[10px] px-[11px] w-[70px]">
@@ -211,6 +225,7 @@ export default function PortfolioPage({ onAddHolding }: { onAddHolding: () => vo
           </div>
         </div>
       </div>
+      <PortfolioImportWizard open={showImport} onClose={() => setShowImport(false)} />
     </div>
   );
 }

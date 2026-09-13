@@ -7,8 +7,10 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar,
   CartesianGrid, ComposedChart, Line,
 } from 'recharts';
-import { TrendingUp, BarChart3, Grid3X3, Wifi, Globe, Loader2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { TrendingUp, BarChart3, Grid3X3, Wifi, Globe, Loader2, ArrowUpRight, ArrowDownRight, Bell } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import PriceAlertModal from '@/components/PriceAlertModal';
+import { sma, rsi, bollinger } from '@/lib/analytics/indicators';
 
 const TABS = [
   { id: 'charts', label: 'Charts', icon: TrendingUp },
@@ -79,6 +81,7 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
   const [quote, setQuote] = useState<QuoteData | null>(null);
   const [loading, setLoading] = useState(false);
   const [overlay, setOverlay] = useState<string>('none');
+  const [showAlert, setShowAlert] = useState(false);
 
   const fetchData = useCallback(async (sym: string, ri: number) => {
     setLoading(true);
@@ -108,19 +111,22 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
     }));
   }, [chartData]);
 
-  // Simple MA calculation
+  const closes = useMemo(() => displayData.map(d => d.close), [displayData]);
+  const sma20 = useMemo(() => sma(closes, 20), [closes]);
+  const sma50 = useMemo(() => sma(closes, 50), [closes]);
+  const rsiArr = useMemo(() => rsi(closes, 14), [closes]);
+  const bb = useMemo(() => bollinger(closes, 20, 2), [closes]);
+
   const maData = useMemo(() => {
-    if (overlay !== 'ma' || !chartData.length) return displayData;
-    return displayData.map((d, i, arr) => {
-      const slice20 = arr.slice(Math.max(0, i - 19), i + 1);
-      const slice50 = arr.slice(Math.max(0, i - 49), i + 1);
-      return {
-        ...d,
-        ma20: slice20.reduce((s, x) => s + x.close, 0) / slice20.length,
-        ma50: slice50.length >= 20 ? slice50.reduce((s, x) => s + x.close, 0) / slice50.length : undefined,
-      };
-    });
-  }, [displayData, overlay, chartData.length]);
+    return displayData.map((d, i) => ({
+      ...d,
+      ma20: sma20[i] ?? undefined,
+      ma50: sma50[i] ?? undefined,
+      rsi: rsiArr[i] ?? undefined,
+      bbUpper: bb.upper[i] ?? undefined,
+      bbLower: bb.lower[i] ?? undefined,
+    }));
+  }, [displayData, sma20, sma50, rsiArr, bb]);
 
   const chgColor = quote && quote.changePercent >= 0 ? 'text-primary' : 'text-destructive';
   const gradId = quote && quote.changePercent >= 0 ? 'chartGradUp' : 'chartGradDown';
@@ -148,9 +154,13 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
           <option value="none">No Overlay</option>
           <option value="ma">MA (20/50)</option>
           <option value="volume">Volume</option>
+          <option value="bb">Bollinger Bands</option>
+          <option value="rsi">RSI (14)</option>
         </select>
+        <button onClick={() => setShowAlert(true)} className="px-2 py-1 rounded-md text-[11px] bg-primary/10 text-primary border border-primary/20 flex items-center gap-1"><Bell className="w-3 h-3" />Alert</button>
       </div>
 
+      {symbol.endsWith('.NR') && <div className="text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-1.5">NSE price: indicative, updated manually — not live until NSE Delayed Data vendor setup (see §3.1). 15-min delay planned.</div>}
       <div className="grid gap-3.5" style={{ gridTemplateColumns: '1fr 280px' }}>
         {/* Chart */}
         <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -200,6 +210,9 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
                     <Area type="monotone" dataKey="close" stroke={strokeColor} fill={`url(#${gradId})`} strokeWidth={2} dot={false} />
                     {overlay === 'ma' && <Line type="monotone" dataKey="ma20" stroke="hsl(38 95% 55%)" strokeWidth={1.5} dot={false} />}
                     {overlay === 'ma' && <Line type="monotone" dataKey="ma50" stroke="hsl(258 89% 76%)" strokeWidth={1.5} dot={false} />}
+                    {overlay === 'bb' && <Line type="monotone" dataKey="bbUpper" stroke="hsl(200 80% 60%)" strokeWidth={1} dot={false} strokeDasharray="4 2" />}
+                    {overlay === 'bb' && <Line type="monotone" dataKey="bbLower" stroke="hsl(200 80% 60%)" strokeWidth={1} dot={false} strokeDasharray="4 2" />}
+                    {overlay === 'rsi' && <Line type="monotone" dataKey="rsi" stroke="hsl(280 80% 60%)" strokeWidth={1.5} dot={false} />}
                   </AreaChart>
                 )}
               </ResponsiveContainer>
@@ -209,7 +222,9 @@ function ChartsTab({ initialSymbol }: { initialSymbol?: string }) {
               </div>
             )}
           </div>
+          {overlay === 'rsi' && <div className="px-3 pb-2 text-[10px] text-muted-foreground">RSI(14): &gt;70 overbought, &lt;30 oversold. Grey area = neutral.</div>}
         </div>
+        <PriceAlertModal open={showAlert} onClose={() => setShowAlert(false)} symbol={symbol} price={quote?.price} />
 
         {/* Quote Details */}
         <div className="space-y-3">

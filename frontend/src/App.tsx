@@ -8,6 +8,7 @@ import { PortfolioProvider } from "@/context/PortfolioContext";
 import { WatchlistProvider } from "@/context/WatchlistContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { RealtimeMarketProvider } from "@/context/RealtimeMarketContext";
+import { CurrencyProvider } from "@/context/CurrencyContext";
 import React, { Suspense, lazy } from "react";
 import { Navigate } from "react-router-dom";
 import AuthPage from "./pages/AuthPage";
@@ -24,6 +25,8 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
 const NewsFeedPage = lazy(() => import("./pages/NewsFeedPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const CommunityPage = lazy(() => import("./pages/CommunityPage"));
+const LearnPage = lazy(() => import("./pages/LearnPage"));
 
 function LazyFallback() {
   return (
@@ -70,6 +73,8 @@ function AppRoutes() {
               <Route path="calendar" element={<CalendarPage />} />
               <Route path="watchlist" element={<WatchlistPage onNavigate={(p, s) => window.dispatchEvent(new CustomEvent('mevest-navigate', { detail: { page: p, sym: s } }))} />} />
               <Route path="news" element={<NewsFeedPage />} />
+              <Route path="community" element={<CommunityPage />} />
+              <Route path="learn" element={<LearnPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -87,11 +92,13 @@ const App = () => (
       <ThemeProvider>
         <AuthProvider>
           <RealtimeMarketProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppRoutes />
-            </BrowserRouter>
+            <CurrencyProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <AppRoutes />
+              </BrowserRouter>
+            </CurrencyProvider>
           </RealtimeMarketProvider>
         </AuthProvider>
       </ThemeProvider>

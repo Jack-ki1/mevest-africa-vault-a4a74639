@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MARKET, MarketAsset, TICKER_ITEMS, MARKET_REGIONS, MarketRegionItem } from '@/data/market-data';
 import { marketApi, SearchResult, QuoteData } from '@/lib/api/market';
+import { supabase } from '@/integrations/supabase/client';
 
 // Extended universal asset database - any asset searchable
 export interface UniversalAsset {
@@ -160,6 +161,34 @@ export function RealtimeMarketProvider({ children }: { children: React.ReactNode
     const interval = setInterval(fetchLiveQuotes, 30000);
     return () => clearInterval(interval);
   }, [fetchLiveQuotes]);
+
+  // Supabase Realtime subscription to price_history — pushes instant updates without polling
+  useEffect(() => {
+    const client = supabase as unknown as { channel?: (name: string) => { on: (...a: unknown[]) => { subscribe: () => { unsubscribe: () => void } }; subscribe: () => { unsubscribe: () => void } }; removeChannel?: (ch: unknown) => void };
+    if (!client.channel) return;
+    const ch = client
+      .channel('price_history_realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'price_history' }, (payload: { new: { symbol: string; close: number; open: number | null } }) => {
+        const row = payload.new;
+        const price = Number(row.close);
+        const open = row.open != null ? Number(row.open) : price;
+        const chg = price - open;
+        const chgPct = open ? (chg / open) * 100 : 0;
+        setLiveQuotes(prev => ({
+          ...prev,
+          [row.symbol]: {
+            symbol: row.symbol, name: row.symbol, price, change: chg, changePercent: chgPct,
+            volume: 0, marketCap: 0, currency: 'USD', exchange: '', type: 'EQUITY',
+            prevClose: open, open, dayHigh: price, dayLow: price,
+            fiftyTwoWeekHigh: 0, fiftyTwoWeekLow: 0, fiftyDayAvg: 0, twoHundredDayAvg: 0,
+          } as QuoteData,
+        }));
+        setIsLive(true);
+        setLastUpdate(Date.now());
+      })
+      .subscribe();
+    return () => { client.removeChannel?.(ch); };
+  }, []);
 
   // NOTE: A previous implementation simulated micro price movements every 2s
   // by calling setState on a large dictionary, which forced every consumer of
