@@ -33,6 +33,24 @@ export default function AiChatWidget() {
     scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
   }, [messages, toolStatus]);
 
+  // Allow Dashboard briefing card to open chat and pre-fill a follow-up prompt
+  useEffect(() => {
+    const openH = () => setOpen(true);
+    const askH = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail === 'string' && detail) {
+        setOpen(true);
+        setInput(detail);
+      }
+    };
+    window.addEventListener('mevest-open-chat', openH);
+    window.addEventListener('mevest-ask-followup', askH as EventListener);
+    return () => {
+      window.removeEventListener('mevest-open-chat', openH);
+      window.removeEventListener('mevest-ask-followup', askH as EventListener);
+    };
+  }, []);
+
   const clearChat = () => {
     setMessages([
       { role: 'assistant', content: "Chat cleared! How can I help you? 🚀" },
@@ -143,7 +161,7 @@ export default function AiChatWidget() {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)}
+      <button onClick={() => setOpen(true)} data-mevest-chat-trigger
         className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center hover:scale-105 transition-transform">
         <MessageCircle className="w-6 h-6" />
       </button>
